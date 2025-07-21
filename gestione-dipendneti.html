@@ -50,33 +50,6 @@
     .back-home:hover {
       background-color: #bbb;
     }
-    .tooltip {
-      position: relative;
-      display: inline-block;
-      cursor: help;
-    }
-
-    .tooltip .tooltiptext {
-      visibility: hidden;
-      width: 220px;
-      background-color: #333;
-      color: #fff;
-      text-align: left;
-      border-radius: 6px;
-      padding: 8px;
-      position: absolute;
-      z-index: 1;
-      bottom: 125%;
-      left: 50%;
-      margin-left: -110px;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .tooltip:hover .tooltiptext {
-      visibility: visible;
-      opacity: 1;
-    }
   </style>
 </head>
 <body>
@@ -174,35 +147,10 @@
         document.getElementById("messaggio").textContent = "Errore caricamento: " + error.message;
         return;
       }
-      data.forEach(async d => {
+      data.forEach(d => {
         const opt = document.createElement("option");
         opt.value = d.id;
         opt.textContent = d.nome + " (" + d.gruppo + ")";
-
-        // Tooltip ferie
-        const ferie = await supabase.from("ferie")
-          .select("data_inizio, giorni")
-          .eq("email_dipendente", d.email)
-          .eq("stato", "Approvata");
-
-        const totali = {};
-        ferie.data?.forEach(f => {
-          const mese = new Date(f.data_inizio).toLocaleString("default", { month: "short" });
-          if (!totali[mese]) totali[mese] = 0;
-          totali[mese] += f.giorni * 7.6;
-        });
-
-        const tooltip = document.createElement("span");
-        tooltip.classList.add("tooltiptext");
-        tooltip.innerHTML = Object.entries(totali).map(([m, h]) => `${m}: ${h.toFixed(1)}h`).join("<br>");
-
-        const wrapper = document.createElement("span");
-        wrapper.classList.add("tooltip");
-        wrapper.appendChild(document.createTextNode(opt.textContent));
-        wrapper.appendChild(tooltip);
-
-        opt.textContent = "";
-        opt.appendChild(wrapper);
         select.appendChild(opt);
       });
     }
@@ -258,33 +206,28 @@
         }
       }
 
-      let result;
-      if (id) {
-        result = await supabase.from("dipendenti").update(nuovoDip).eq("id", id);
-      } else {
+      if (!id) {
         const response = await fetch("/api/crea-utente", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(nuovoDip)
         });
 
-        const resultJson = await response.json();
+        const result = await response.json();
         if (!response.ok) {
-          messaggio.textContent = "Errore: " + resultJson.error;
+          messaggio.textContent = "Errore: " + result.error;
           return;
         }
-
         alert("Dipendente creato correttamente.");
         window.location.reload();
-        return;
-      }
-
-      const { error } = result;
-      if (error) {
-        messaggio.textContent = "Errore salvataggio: " + error.message;
       } else {
-        alert("Dipendente salvato correttamente.");
-        window.location.reload();
+        const { error } = await supabase.from("dipendenti").update(nuovoDip).eq("id", id);
+        if (error) {
+          messaggio.textContent = "Errore salvataggio: " + error.message;
+        } else {
+          alert("Dipendente aggiornato correttamente.");
+          window.location.reload();
+        }
       }
     }
 
