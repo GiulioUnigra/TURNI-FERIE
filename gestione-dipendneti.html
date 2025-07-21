@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestione Dipendenti</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9fdf9;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .error {
+      color: red;
+      text-align: center;
+    }
+    .back-home {
+      display: block;
+      width: fit-content;
+      margin: 0 auto 20px auto;
+      text-align: center;
+      padding: 8px 16px;
+      background-color: #ccc;
+      color: #000;
+      border-radius: 5px;
+      text-decoration: none;
+    }
+    .back-home:hover {
+      background-color: #bbb;
+    }
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: help;
+    }
+
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 220px;
+      background-color: #333;
+      color: #fff;
+      text-align: left;
+      border-radius: 6px;
+      padding: 8px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -110px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <a href="home.html" class="back-home">⬅ Torna alla Home</a>
+  <h2>🧑‍💼 Gestione Dipendenti</h2>
+  <div class="container">
+    <label for="dipendente_selezionato">Modifica dipendente</label>
+    <select id="dipendente_selezionato">
+      <option value="">-- Nuovo dipendente --</option>
+    </select>
+
+    <label for="nome">Nome</label>
+    <input id="nome" type="text">
+
+    <label for="email">Email</label>
+    <input id="email" type="email">
+
+    <label for="password">Password</label>
+    <input id="password" type="password">
+
+    <label for="telefono_fisso">Telefono Fisso (opzionale)</label>
+    <input id="telefono_fisso" type="text">
+
+    <label for="cellulare">Cellulare (opzionale)</label>
+    <input id="cellulare" type="text">
+
+    <label for="gruppo">Gruppo</label>
+    <select id="gruppo"></select>
+
+    <label for="ruolo">Ruolo</label>
+    <select id="ruolo">
+      <option>Analista</option>
+      <option>Referente</option>
+      <option>Responsabile</option>
+      <option>Viceresponsabile</option>
+    </select>
+
+    <label for="tipo_turno">Tipo Turno</label>
+    <select id="tipo_turno">
+      <option>Standard</option>
+      <option>Altro</option>
+      <option>Ciclo Continuo</option>
+    </select>
+
+    <label for="ore_accumulate">Ore accumulate (precedenti)</label>
+    <input id="ore_accumulate" type="number" step="0.01">
+
+    <label for="ore_annuali">Monte ore annuali</label>
+    <input id="ore_annuali" type="number" step="0.01">
+
+    <button id="salva_btn">Salva Dipendente</button>
+    <div id="messaggio" class="error"></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const supabase = createClient(
+      'https://sauahmyekejigpbjrdug.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhdWFobXlla2VqaWdwYmpyZHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0Njc2OTcsImV4cCI6MjA2NzA0MzY5N30.JetFvFBwg1dy9AqyeSnTYalAuuIrPAyaFWzc8SRaxYo'
+    );
+
+    const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
+    const ruolo = utente?.ruolo;
+    const gruppiGestiti = Array.isArray(utente?.gruppi_gestiti) ? utente.gruppi_gestiti : (utente?.gruppi_gestiti || "").split(",").map(g => g.trim());
+
+    if (ruolo === "Analista") {
+      alert("Accesso non consentito.");
+      window.location.href = "home.html";
+    }
+
+    const tuttiIGruppi = [
+      "Infoclienti", "Oli", "Contaminanti", "Microbiologia",
+      "Allergeni", "Confezionati", "Materie Prime", "Cioccolato"
+    ];
+
+    function popolaGruppiSelect() {
+      const select = document.getElementById("gruppo");
+      select.innerHTML = "";
+      const gruppiDaMostrare = ruolo === "Referente" ? gruppiGestiti : tuttiIGruppi;
+      gruppiDaMostrare.forEach(gr => {
+        const opt = document.createElement("option");
+        opt.value = gr;
+        opt.textContent = gr;
+        select.appendChild(opt);
+      });
+    }
+
+    async function caricaDipendenti() {
+      let query = supabase.from("dipendenti").select("id, nome, gruppo, email").eq("attivo", true);
+      if (ruolo === "Referente") query = query.in("gruppo", gruppiGestiti);
+      const { data, error } = await query;
+      const select = document.getElementById("dipendente_selezionato");
+      if (error) {
+        document.getElementById("messaggio").textContent = "Errore caricamento: " + error.message;
+        return;
+      }
+      data.forEach(async d => {
+        const opt = document.createElement("option");
+        opt.value = d.id;
+        opt.textContent = d.nome + " (" + d.gruppo + ")";
+
+        // Tooltip ferie
+        const ferie = await supabase.from("ferie")
+          .select("data_inizio, giorni")
+          .eq("email_dipendente", d.email)
+          .eq("stato", "Approvata");
+
+        const totali = {};
+        ferie.data?.forEach(f => {
+          const mese = new Date(f.data_inizio).toLocaleString("default", { month: "short" });
+          if (!totali[mese]) totali[mese] = 0;
+          totali[mese] += f.giorni * 7.6;
+        });
+
+        const tooltip = document.createElement("span");
+        tooltip.classList.add("tooltiptext");
+        tooltip.innerHTML = Object.entries(totali).map(([m, h]) => `${m}: ${h.toFixed(1)}h`).join("<br>");
+
+        const wrapper = document.createElement("span");
+        wrapper.classList.add("tooltip");
+        wrapper.appendChild(document.createTextNode(opt.textContent));
+        wrapper.appendChild(tooltip);
+
+        opt.textContent = "";
+        opt.appendChild(wrapper);
+        select.appendChild(opt);
+      });
+    }
+
+    document.getElementById("dipendente_selezionato").addEventListener("change", async (e) => {
+      const id = e.target.value;
+      if (!id) return;
+      const { data, error } = await supabase.from("dipendenti").select("*").eq("id", id).single();
+      if (error) {
+        document.getElementById("messaggio").textContent = "Errore caricamento: " + error.message;
+        return;
+      }
+      document.getElementById("nome").value = data.nome;
+      document.getElementById("email").value = data.email;
+      document.getElementById("password").value = data.password;
+      document.getElementById("telefono_fisso").value = data.telefono_fisso || "";
+      document.getElementById("cellulare").value = data.cellulare || "";
+      document.getElementById("gruppo").value = data.gruppo;
+      document.getElementById("ruolo").value = data.ruolo;
+      document.getElementById("tipo_turno").value = data.tipo_turno;
+      document.getElementById("ore_accumulate").value = data.ore_accumulate;
+      document.getElementById("ore_annuali").value = data.ore_annuali;
+    });
+
+    async function salvaDipendente() {
+      const messaggio = document.getElementById("messaggio");
+      messaggio.textContent = "";
+      const id = document.getElementById("dipendente_selezionato").value;
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const nuovoDip = {
+        nome: document.getElementById("nome").value,
+        email,
+        password,
+        telefono_fisso: document.getElementById("telefono_fisso").value,
+        cellulare: document.getElementById("cellulare").value,
+        gruppo: document.getElementById("gruppo").value,
+        ruolo: document.getElementById("ruolo").value,
+        tipo_turno: document.getElementById("tipo_turno").value,
+        ore_accumulate: parseFloat(document.getElementById("ore_accumulate").value || 0),
+        ore_annuali: parseFloat(document.getElementById("ore_annuali").value || 0),
+        attivo: true
+      };
+
+      if (ruolo === "Referente") {
+        if (!gruppiGestiti.includes(nuovoDip.gruppo)) {
+          messaggio.textContent = "Non puoi modificare dipendenti fuori dai tuoi gruppi.";
+          return;
+        }
+        if (nuovoDip.ruolo !== "Analista") {
+          messaggio.textContent = "Puoi creare solo profili Analista.";
+          return;
+        }
+      }
+
+      let result;
+      if (id) {
+        result = await supabase.from("dipendenti").update(nuovoDip).eq("id", id);
+      } else {
+        const response = await fetch("/api/crea-utente", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(nuovoDip)
+        });
+
+        const resultJson = await response.json();
+        if (!response.ok) {
+          messaggio.textContent = "Errore: " + resultJson.error;
+          return;
+        }
+
+        alert("Dipendente creato correttamente.");
+        window.location.reload();
+        return;
+      }
+
+      const { error } = result;
+      if (error) {
+        messaggio.textContent = "Errore salvataggio: " + error.message;
+      } else {
+        alert("Dipendente salvato correttamente.");
+        window.location.reload();
+      }
+    }
+
+    document.getElementById("salva_btn").addEventListener("click", salvaDipendente);
+
+    popolaGruppiSelect();
+    caricaDipendenti();
+  </script>
+</body>
+</html>
