@@ -63,192 +63,112 @@
   <a href="home.html" class="back-home">⬅ Torna alla Home</a>
   <h2>🧑‍💼 Gestione Dipendenti</h2>
   <div class="container">
-    <label for="dipendente_selezionato">Modifica dipendente</label>
-    <select id="dipendente_selezionato">
-      <option value="">-- Nuovo dipendente --</option>
-    </select>
+    <div id="permesso_negato" class="error" style="display: none;">Accesso non autorizzato.</div>
+    <div id="form_container" style="display: none;">
+      <label for="nome">Nome</label>
+      <input id="nome" type="text">
 
-    <label for="nome">Nome</label>
-    <input id="nome" type="text">
+      <label for="email">Email (principale)</label>
+      <input id="email" type="email">
 
-    <label for="email">Email</label>
-    <input id="email" type="email">
+      <label for="password">Password</label>
+      <input id="password" type="password">
 
-    <label for="password">Password</label>
-    <input id="password" type="password">
+      <label for="telefono_fisso">Telefono Fisso</label>
+      <input id="telefono_fisso" type="text">
 
-    <label for="telefono_fisso">Telefono Fisso (opzionale)</label>
-    <input id="telefono_fisso" type="text">
+      <label for="cellulare">Cellulare</label>
+      <input id="cellulare" type="text">
 
-    <label for="cellulare">Cellulare (opzionale)</label>
-    <input id="cellulare" type="text">
+      <label>Gruppo</label>
+      <div id="gruppo" class="checkbox-group">
+        <label><input type="checkbox" value="Cioccolato">Cioccolato</label>
+        <label><input type="checkbox" value="Microbiologia">Microbiologia</label>
+        <label><input type="checkbox" value="Oli">Oli</label>
+        <label><input type="checkbox" value="Allergeni">Allergeni</label>
+        <label><input type="checkbox" value="Contaminanti">Contaminanti</label>
+        <label><input type="checkbox" value="Infoclienti">Infoclienti</label>
+        <label><input type="checkbox" value="Confezionati">Confezionati</label>
+        <label><input type="checkbox" value="Materie Prime">Materie Prime</label>
+      </div>
 
-    <label>Gruppo (uno o più)</label>
-    <div id="gruppo" class="checkbox-group"></div>
+      <label for="ruolo">Ruolo</label>
+      <select id="ruolo">
+        <option>Analista</option>
+        <option>Referente</option>
+        <option>Responsabile</option>
+        <option>Viceresponsabile</option>
+      </select>
 
-    <label for="ruolo">Ruolo</label>
-    <select id="ruolo">
-      <option>Analista</option>
-      <option>Referente</option>
-      <option>Responsabile</option>
-      <option>Viceresponsabile</option>
-    </select>
+      <label for="tipo_turno">Tipo Turno</label>
+      <select id="tipo_turno">
+        <option>Standard</option>
+        <option>Altro</option>
+        <option>Ciclo Continuo</option>
+      </select>
 
-    <label for="tipo_turno">Tipo Turno</label>
-    <select id="tipo_turno">
-      <option>Standard</option>
-      <option>Altro</option>
-      <option>Ciclo Continuo</option>
-    </select>
+      <label for="ore_accumulate">Ore accumulate</label>
+      <input id="ore_accumulate" type="number" step="0.01">
 
-    <label for="ore_accumulate">Ore accumulate (precedenti)</label>
-    <input id="ore_accumulate" type="number" step="0.01">
+      <label for="ore_annuali">Monte ore annuali</label>
+      <input id="ore_annuali" type="number" step="0.01">
 
-    <label for="ore_annuali">Monte ore annuali</label>
-    <input id="ore_annuali" type="number" step="0.01">
-
-    <button id="salva_btn">Salva Dipendente</button>
-    <div id="messaggio" class="error"></div>
+      <button id="salva_btn">Salva Dipendente</button>
+      <div id="messaggio" class="error"></div>
+    </div>
   </div>
 
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-    const supabase = createClient(
-      'https://lmcawwcrwqtmylhcbqwi.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
-    );
-
+  <script>
     const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
     const ruolo = utente?.ruolo;
-    const gruppiGestiti = Array.isArray(utente?.gruppi_gestiti) ? utente.gruppi_gestiti : (utente?.gruppi_gestiti || "").split(",").map(g => g.trim());
 
     if (!utente || ruolo === "Analista") {
-      alert("Accesso non consentito.");
-      window.location.href = "home.html";
+      document.getElementById("permesso_negato").style.display = "block";
+    } else {
+      document.getElementById("form_container").style.display = "block";
     }
 
-    const tuttiIGruppi = [
-      "Infoclienti", "Oli", "Contaminanti", "Microbiologia",
-      "Allergeni", "Confezionati", "Materie Prime", "Cioccolato"
-    ];
-
-    function popolaGruppiCheck() {
-      const container = document.getElementById("gruppo");
-      container.innerHTML = "";
-      const gruppiDaMostrare = ruolo === "Referente" ? gruppiGestiti : tuttiIGruppi;
-      gruppiDaMostrare.forEach(gr => {
-        const label = document.createElement("label");
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.value = gr;
-        checkbox.name = "gruppo"
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(" " + gr));
-        container.appendChild(label);
-      });
-    }
-
-    async function caricaDipendenti() {
-      let query = supabase.from("dipendenti").select("id, nome, gruppo").eq("attivo", true);
-      if (ruolo === "Referente") query = query.in("gruppo", gruppiGestiti);
-      const { data, error } = await query;
-      const select = document.getElementById("dipendente_selezionato");
-      if (error) {
-        document.getElementById("messaggio").textContent = "Errore caricamento: " + error.message;
-        return;
-      }
-      data.forEach(d => {
-        const opt = document.createElement("option");
-        opt.value = d.id;
-        opt.textContent = d.nome + " (" + d.gruppo + ")";
-        select.appendChild(opt);
-      });
-    }
-
-    document.getElementById("dipendente_selezionato").addEventListener("change", async (e) => {
-      const id = e.target.value;
-      if (!id) return;
-      const { data, error } = await supabase.from("dipendenti").select("*").eq("id", id).single();
-      if (error) {
-        document.getElementById("messaggio").textContent = "Errore caricamento: " + error.message;
-        return;
-      }
-      document.getElementById("nome").value = data.nome;
-      document.getElementById("email").value = data.email;
-      document.getElementById("password").value = data.password;
-      document.getElementById("telefono_fisso").value = data.telefono_fisso || "";
-      document.getElementById("cellulare").value = data.cellulare || "";
-      document.getElementById("ruolo").value = data.ruolo;
-      document.getElementById("tipo_turno").value = data.tipo_turno;
-      document.getElementById("ore_accumulate").value = data.ore_accumulate;
-      document.getElementById("ore_annuali").value = data.ore_annuali;
-
-      const gruppo = data.gruppo.split(",").map(g => g.trim());
-      document.querySelectorAll("input[name='gruppo']").forEach(cb => {
-        cb.checked = gruppo.includes(cb.value);
-      });
-    });
-
-    async function salvaDipendente() {
-      const messaggio = document.getElementById("messaggio");
-      messaggio.textContent = "";
-      const id = document.getElementById("dipendente_selezionato").value;
-      const gruppiSelezionati = [...document.querySelectorAll("input[name='gruppo']:checked")].map(cb => cb.value);
+    document.getElementById("salva_btn").addEventListener("click", async () => {
+      const gruppi = Array.from(document.querySelectorAll("#gruppo input:checked")).map(cb => cb.value);
+      const emailPrincipale = document.getElementById("email").value;
+      const nome = document.getElementById("nome").value;
+      const emailFittizia = nome.replace(/\s+/g, '').toLowerCase() + "+" + emailPrincipale;
 
       const nuovoDip = {
-        nome: document.getElementById("nome").value,
-        email: document.getElementById("email").value,
+        nome,
+        email: emailFittizia,
         password: document.getElementById("password").value,
         telefono_fisso: document.getElementById("telefono_fisso").value,
         cellulare: document.getElementById("cellulare").value,
-        gruppo: gruppiSelezionati.join(", "),
+        gruppo: gruppi.join(", "),
         ruolo: document.getElementById("ruolo").value,
         tipo_turno: document.getElementById("tipo_turno").value,
-        ore_accumulate: parseFloat(document.getElementById("ore_accumulate").value || 0),
-        ore_annuali: parseFloat(document.getElementById("ore_annuali").value || 0),
-        attivo: true
+        ore_accumulate: parseFloat(document.getElementById("ore_accumulate").value) || 0,
+        ore_annuali: parseFloat(document.getElementById("ore_annuali").value) || 0
       };
 
-      if (ruolo === "Referente") {
-        if (!gruppiSelezionati.every(gr => gruppiGestiti.includes(gr))) {
-          messaggio.textContent = "Non puoi assegnare gruppi fuori dai tuoi.";
-          return;
-        }
-        if (nuovoDip.ruolo !== "Analista") {
-          messaggio.textContent = "Puoi creare solo profili Analista.";
-          return;
-        }
+      const messaggio = document.getElementById("messaggio");
+      const response = await fetch("/api/crea-utente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nuovoDip)
+      });
+
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        messaggio.textContent = "Errore del server: risposta non valida.";
+        return;
+      }
+      if (!response.ok) {
+        messaggio.textContent = "Errore: " + result.error;
+        return;
       }
 
-      if (!id) {
-        try {
-          const response = await fetch("/api/crea-utente", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(nuovoDip)
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || "Errore generico");
-          alert("Dipendente creato correttamente.");
-          window.location.reload();
-        } catch (err) {
-          messaggio.textContent = "Errore: " + err.message;
-        }
-      } else {
-        const result = await supabase.from("dipendenti").update(nuovoDip).eq("id", id);
-        if (result.error) {
-          messaggio.textContent = "Errore: " + result.error.message;
-        } else {
-          alert("Dipendente aggiornato correttamente.");
-          window.location.reload();
-        }
-      }
-    }
-
-    document.getElementById("salva_btn").addEventListener("click", salvaDipendente);
-    popolaGruppiCheck();
-    caricaDipendenti();
+      alert("Dipendente creato correttamente.");
+      window.location.href = "home.html";
+    });
   </script>
 </body>
 </html>
