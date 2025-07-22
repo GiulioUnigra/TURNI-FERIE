@@ -50,6 +50,13 @@
     .back-home:hover {
       background-color: #bbb;
     }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .checkbox-group label {
+      margin-right: 10px;
+    }
   </style>
 </head>
 <body>
@@ -76,8 +83,8 @@
     <label for="cellulare">Cellulare (opzionale)</label>
     <input id="cellulare" type="text">
 
-    <label for="gruppo">Gruppo (uno o più)</label>
-    <select id="gruppo" multiple></select>
+    <label>Gruppo (uno o più)</label>
+    <div id="gruppo" class="checkbox-group"></div>
 
     <label for="ruolo">Ruolo</label>
     <select id="ruolo">
@@ -126,15 +133,19 @@
       "Allergeni", "Confezionati", "Materie Prime", "Cioccolato"
     ];
 
-    function popolaGruppiSelect() {
-      const select = document.getElementById("gruppo");
-      select.innerHTML = "";
+    function popolaGruppiCheck() {
+      const container = document.getElementById("gruppo");
+      container.innerHTML = "";
       const gruppiDaMostrare = ruolo === "Referente" ? gruppiGestiti : tuttiIGruppi;
       gruppiDaMostrare.forEach(gr => {
-        const opt = document.createElement("option");
-        opt.value = gr;
-        opt.textContent = gr;
-        select.appendChild(opt);
+        const label = document.createElement("label");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = gr;
+        checkbox.name = "gruppo"
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(" " + gr));
+        container.appendChild(label);
       });
     }
 
@@ -172,15 +183,18 @@
       document.getElementById("tipo_turno").value = data.tipo_turno;
       document.getElementById("ore_accumulate").value = data.ore_accumulate;
       document.getElementById("ore_annuali").value = data.ore_annuali;
-      const gruppoSelect = document.getElementById("gruppo");
-      [...gruppoSelect.options].forEach(opt => opt.selected = data.gruppo.includes(opt.value));
+
+      const gruppo = data.gruppo.split(",").map(g => g.trim());
+      document.querySelectorAll("input[name='gruppo']").forEach(cb => {
+        cb.checked = gruppo.includes(cb.value);
+      });
     });
 
     async function salvaDipendente() {
       const messaggio = document.getElementById("messaggio");
       messaggio.textContent = "";
       const id = document.getElementById("dipendente_selezionato").value;
-      const gruppiSelezionati = [...document.getElementById("gruppo").selectedOptions].map(opt => opt.value);
+      const gruppiSelezionati = [...document.querySelectorAll("input[name='gruppo']:checked")].map(cb => cb.value);
 
       const nuovoDip = {
         nome: document.getElementById("nome").value,
@@ -198,7 +212,7 @@
 
       if (ruolo === "Referente") {
         if (!gruppiSelezionati.every(gr => gruppiGestiti.includes(gr))) {
-          messaggio.textContent = "Non puoi assegnare gruppi fuori dai tuoi.");
+          messaggio.textContent = "Non puoi assegnare gruppi fuori dai tuoi.";
           return;
         }
         if (nuovoDip.ruolo !== "Analista") {
@@ -233,7 +247,7 @@
     }
 
     document.getElementById("salva_btn").addEventListener("click", salvaDipendente);
-    popolaGruppiSelect();
+    popolaGruppiCheck();
     caricaDipendenti();
   </script>
 </body>
