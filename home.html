@@ -2,171 +2,107 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Home 🏠</title>
+  <title>Home - Dipendenti</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4fdf4;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #4CAF50;
-      color: white;
-      padding: 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 1.5rem;
-    }
-    #logout {
-      background-color: #ffffff;
-      color: #4CAF50;
-      padding: 8px 12px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    .content {
+      background: #f3fdf3;
       padding: 20px;
+    }
+    h2 {
+      text-align: center;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      background-color: #fff;
     }
     th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
       text-align: left;
     }
-    th {
-      background-color: #e0f2e0;
-    }
-    .tooltip {
-      position: relative;
-      cursor: help;
-    }
-    .tooltip .tooltiptext {
-      visibility: hidden;
-      background-color: #333;
-      color: #fff;
-      text-align: left;
-      padding: 6px;
+    .btn {
+      display: inline-block;
+      margin: 10px 5px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      text-decoration: none;
       border-radius: 5px;
-      position: absolute;
-      z-index: 1;
-      bottom: 125%;
-      left: 50%;
-      margin-left: -100px;
-      width: 200px;
-      opacity: 0;
-      transition: opacity 0.3s;
     }
-    .tooltip:hover .tooltiptext {
-      visibility: visible;
-      opacity: 1;
+    .btn:hover {
+      background-color: #45a049;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Benvenuto in Gestione Ferie e Turni</h1>
-    <button id="logout">Logout</button>
-  </header>
-
-  <div class="content">
-    <h2>Dipendenti Attivi</h2>
-    <table id="tabellaDipendenti">
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Email</th>
-          <th>Gruppo</th>
-          <th>Ruolo</th>
-          <th>Ore Residue</th>
-        </tr>
-      </thead>
-      <tbody>
-      </tbody>
-    </table>
-  </div>
+  <h2>Benvenuto</h2>
+  <div id="contenuto"></div>
+  <a href="#" class="btn" onclick="logout()">Logout</a>
 
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
     const supabase = createClient(
       'https://lmcawwcrwqtmylhcbqwi.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
     );
 
     const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
-    if (!utente) window.location.href = "/index.html";
+    const contenuto = document.getElementById("contenuto");
 
-    document.getElementById("logout").addEventListener("click", () => {
-      localStorage.removeItem("utenteLoggato");
-      window.location.href = "/index.html";
-    });
+    async function mostraPersonale() {
+      const { data, error } = await supabase
+        .from("dipendenti")
+        .select("nome, email, gruppo, ruolo, tipo_turno, ore_accumulate, ore_annuali")
+        .eq("email", utente.email)
+        .single();
 
-    const tbody = document.querySelector("#tabellaDipendenti tbody");
+      if (error) {
+        contenuto.innerHTML = `<p>Errore nel caricamento dati personali.</p>`;
+        return;
+      }
 
-    const tuttiIGruppi = [
-      "Infoclienti", "Oli", "Contaminanti", "Microbiologia",
-      "Allergeni", "Confezionati", "Materie Prime", "Cioccolato"
-    ];
-
-    const gruppiVisibili = utente.ruolo === "Responsabile" || utente.ruolo === "Viceresponsabile"
-      ? tuttiIGruppi
-      : (utente.gruppi_gestiti || "").split(",").map(g => g.trim());
-
-    const { data: dipendenti, error } = await supabase
-      .from("dipendenti")
-      .select("id, nome, email, gruppo, ruolo, ore_accumulate, ore_annuali")
-      .eq("attivo", true)
-      .in("gruppo", gruppiVisibili);
-
-    for (let d of dipendenti) {
-      const ferieApprovate = await supabase
+      const ferie = await supabase
         .from("ferie")
-        .select("data_inizio, giorni")
-        .eq("email_dipendente", d.email)
+        .select("giorni")
+        .eq("email_dipendente", utente.email)
         .eq("stato", "Approvata");
 
-      let oreFruite = 0;
-      const mensili = {};
-      ferieApprovate.data?.forEach(f => {
-        oreFruite += f.giorni;
-        const mese = new Date(f.data_inizio).toLocaleString('default', { month: 'short' });
-        mensili[mese] = (mensili[mese] || 0) + f.giorni;
-      });
+      const oreFruite = ferie.data.reduce((acc, f) => acc + f.giorni, 0);
+      const oreResidue = (data.ore_accumulate + data.ore_annuali - oreFruite).toFixed(2);
 
-      const cellNome = document.createElement("td");
-      const wrapper = document.createElement("span");
-      wrapper.classList.add("tooltip");
-      wrapper.textContent = d.nome;
-
-      const tooltip = document.createElement("span");
-      tooltip.classList.add("tooltiptext");
-      tooltip.innerHTML = Object.entries(mensili).map(([m, h]) => `${m}: ${h.toFixed(1)}h`).join("<br>");
-
-      wrapper.appendChild(tooltip);
-      cellNome.appendChild(wrapper);
-
-      const residuo = (d.ore_accumulate + d.ore_annuali - oreFruite).toFixed(2);
-
-      const tr = document.createElement("tr");
-      tr.appendChild(cellNome);
-      tr.innerHTML += `
-        <td>${d.email}</td>
-        <td>${d.gruppo}</td>
-        <td>${d.ruolo}</td>
-        <td>${residuo}</td>`;
-
-      tbody.appendChild(tr);
+      contenuto.innerHTML = `
+        <div class="card">
+          <h3>${data.nome}</h3>
+          <p><strong>Email:</strong> ${data.email}</p>
+          <p><strong>Ruolo:</strong> ${data.ruolo}</p>
+          <p><strong>Gruppo:</strong> ${data.gruppo}</p>
+          <p><strong>Tipo turno:</strong> ${data.tipo_turno}</p>
+          <p><strong>Ore accumulate:</strong> ${data.ore_accumulate}</p>
+          <p><strong>Monte ore annuali:</strong> ${data.ore_annuali}</p>
+          <p><strong>Ore fruite:</strong> ${oreFruite}</p>
+          <p><strong>Ore residue:</strong> ${oreResidue}</p>
+        </div>
+        <a href="richieste.html" class="btn">Richiesta Ferie</a>
+        <a href="calendario.html" class="btn">Calendario</a>
+        ${utente.ruolo !== 'Analista' ? `<a href="gestione-dipendenti.html" class="btn">Gestione Dipendenti</a>` : ''}
+        ${['Referente', 'Responsabile', 'Viceresponsabile'].includes(utente.ruolo) ? `<a href="riepilogo.html" class="btn">Riepilogo Dipendenti</a>` : ''}
+      `;
     }
+
+    function logout() {
+      localStorage.removeItem("utenteLoggato");
+      window.location.href = "index.html";
+    }
+
+    mostraPersonale();
   </script>
 </body>
 </html>
