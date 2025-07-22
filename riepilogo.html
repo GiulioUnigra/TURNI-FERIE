@@ -6,115 +6,142 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4fdf4;
+      background: #f4fcf4;
       padding: 20px;
     }
     h2 {
       text-align: center;
-      margin-bottom: 30px;
+    }
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 200px;
+      background-color: #555;
+      color: #fff;
+      text-align: left;
+      border-radius: 6px;
+      padding: 10px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 40px;
+      margin-top: 20px;
     }
     th, td {
-      padding: 10px;
+      padding: 12px;
       border-bottom: 1px solid #ccc;
       text-align: left;
     }
-    th {
-      background-color: #e0f2e0;
-    }
-    .tooltip {
-      position: relative;
-      cursor: pointer;
-    }
-    .tooltip:hover::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      left: 0;
-      top: 100%;
-      white-space: pre;
-      background: #333;
-      color: #fff;
-      padding: 8px;
+    .back-home {
+      display: inline-block;
+      margin-bottom: 20px;
+      padding: 10px 20px;
+      background-color: #ccc;
+      color: #000;
       border-radius: 5px;
-      font-size: 13px;
-      z-index: 1000;
-      width: max-content;
-      max-width: 400px;
+      text-decoration: none;
+    }
+    .back-home:hover {
+      background-color: #bbb;
     }
   </style>
 </head>
 <body>
+  <a href="home.html" class="back-home">⬅ Torna alla Home</a>
   <h2>Riepilogo Dipendenti</h2>
-  <div id="tabella"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Email</th>
+        <th>Gruppo</th>
+        <th>Tipo Turno</th>
+        <th>Ore Accumulate</th>
+        <th>Monte Ore</th>
+        <th>Ore Fruite</th>
+        <th>Ore Residue</th>
+      </tr>
+    </thead>
+    <tbody id="tabella-dipendenti"></tbody>
+  </table>
 
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
     const supabase = createClient(
       'https://lmcawwcrwqtmylhcbqwi.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
     );
 
     const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
-    const tabella = document.getElementById("tabella");
-
-    async function caricaDati() {
-      let query = supabase.from("dipendenti").select("id, nome, email, gruppo, tipo_turno, ore_accumulate, ore_annuali").eq("attivo", true);
-      if (utente.ruolo === 'Referente') {
-        const gruppi = utente.gruppi_gestiti || [];
-        query = query.in("gruppo", gruppi);
-      }
-
-      const { data: dipendenti, error } = await query;
-      if (error) {
-        tabella.innerHTML = `<p>Errore nel caricamento: ${error.message}</p>`;
-        return;
-      }
-
-      const ferieRaw = await supabase.from("ferie").select("email_dipendente, giorni, data_inizio, stato").eq("stato", "Approvata");
-      const feriePerEmail = {};
-
-      ferieRaw.data.forEach(f => {
-        if (!feriePerEmail[f.email_dipendente]) feriePerEmail[f.email_dipendente] = [];
-        feriePerEmail[f.email_dipendente].push(f);
-      });
-
-      let html = `<table><thead><tr><th>Nome</th><th>Email</th><th>Gruppo</th><th>Tipo Turno</th><th>Ore Accumulate</th><th>Ore Annuali</th><th>Ore Fruite</th><th>Ore Residue</th></tr></thead><tbody>`;
-
-      for (const d of dipendenti) {
-        const ferie = feriePerEmail[d.email] || [];
-        const oreFruite = ferie.reduce((tot, f) => tot + f.giorni, 0);
-        const oreResidue = (d.ore_accumulate + d.ore_annuali - oreFruite).toFixed(2);
-
-        // Costruzione tooltip ferie per mese
-        const feriePerMese = ferie.reduce((map, f) => {
-          const meseAnno = new Date(f.data_inizio).toLocaleDateString("it-IT", { year: "numeric", month: "long" });
-          map[meseAnno] = (map[meseAnno] || 0) + f.giorni;
-          return map;
-        }, {});
-
-        const testoTooltip = Object.entries(feriePerMese).map(([m, o]) => `${m}: ${o}h`).join("\n");
-
-        html += `<tr>
-          <td class="tooltip" data-tooltip="${testoTooltip}">${d.nome}</td>
-          <td>${d.email}</td>
-          <td>${d.gruppo}</td>
-          <td>${d.tipo_turno}</td>
-          <td>${d.ore_accumulate}</td>
-          <td>${d.ore_annuali}</td>
-          <td>${oreFruite}</td>
-          <td>${oreResidue}</td>
-        </tr>`;
-      }
-
-      html += `</tbody></table>`;
-      tabella.innerHTML = html;
+    if (!utente || !['Responsabile', 'Viceresponsabile', 'Referente'].includes(utente.ruolo)) {
+      window.location.href = "home.html";
     }
 
-    caricaDati();
+    async function caricaRiepilogo() {
+      const { data: dipendenti, error } = await supabase
+        .from("dipendenti")
+        .select("id, nome, email, gruppo, tipo_turno, ore_accumulate, ore_annuali")
+        .eq("attivo", true);
+
+      if (error) return alert("Errore caricamento dipendenti: " + error.message);
+
+      const tbody = document.getElementById("tabella-dipendenti");
+      tbody.innerHTML = "";
+
+      for (const dip of dipendenti) {
+        const ferie = await supabase
+          .from("ferie")
+          .select("ore, data_inizio")
+          .eq("email_dipendente", dip.email)
+          .eq("stato", "Approvata");
+
+        let oreFruite = 0;
+        const mappaMesi = {};
+        ferie.data.forEach(f => {
+          const data = new Date(f.data_inizio);
+          const key = `${data.getFullYear()}-${(data.getMonth() + 1).toString().padStart(2, '0')}`;
+          mappaMesi[key] = (mappaMesi[key] || 0) + f.ore;
+          oreFruite += f.ore;
+        });
+
+        const tooltipContent = Object.entries(mappaMesi)
+          .map(([k, v]) => `${k}: ${v.toFixed(1)}h`)
+          .join("<br>");
+
+        const oreResidue = (dip.ore_accumulate + dip.ore_annuali - oreFruite).toFixed(2);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><div class="tooltip">${dip.nome}<span class="tooltiptext">${tooltipContent}</span></div></td>
+          <td>${dip.email}</td>
+          <td>${dip.gruppo}</td>
+          <td>${dip.tipo_turno}</td>
+          <td>${dip.ore_accumulate}</td>
+          <td>${dip.ore_annuali}</td>
+          <td>${oreFruite.toFixed(2)}</td>
+          <td>${oreResidue}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    caricaRiepilogo();
   </script>
 </body>
 </html>
