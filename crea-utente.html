@@ -150,7 +150,13 @@
         body: JSON.stringify(nuovoDip)
       });
 
-      const result = await response.json();
+      let result;
+try {
+  result = await response.json();
+} catch (e) {
+  messaggio.textContent = "Errore del server: risposta non valida.";
+  return;
+}
       if (!response.ok) {
         messaggio.textContent = "Errore: " + result.error;
         return;
