@@ -15,9 +15,10 @@ export default async function handler(req, res) {
   const { nome, email, password, gruppo, ...profilo } = req.body;
 
   // Email fittizia unica per auth
-  const emailFittizia = nome.replace(/\s+/g, '').toLowerCase() + "+" + email;
+  const emailFittizia = `${nome.replace(/\s+/g, '').toLowerCase()}+${email}`;
 
   try {
+    // Crea utente nella tabella Auth
     const { data, error: authError } = await supabase.auth.admin.createUser({
       email: emailFittizia,
       password,
@@ -36,9 +37,10 @@ export default async function handler(req, res) {
       return;
     }
 
+    // Inserisce nella tabella dipendenti
     const { error: dbError } = await supabase.from('dipendenti').insert({
       id,
-      email, // Email reale visibile nei dati dipendenti
+      email, // Email reale per contatti
       nome,
       gruppo: Array.isArray(gruppo) ? gruppo.join(',') : gruppo,
       ...profilo,
