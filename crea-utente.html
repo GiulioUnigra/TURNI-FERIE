@@ -1,79 +1,131 @@
-<script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-  const supabase = createClient(
-    'https://lmcawwcrwqtmylhcbqwi.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzEwMTUwOCwiZXhwIjoyMDY4Njc3NTA4fQ.YCd4Zx0C1gyxjCyiXLrXXoj0FOeuXt1YAGJEqbzTL34'
-  );
-
-  const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
-  const ruolo = utente?.ruolo;
-
-  if (!utente || ruolo === "Analista") {
-    document.getElementById("permesso_negato").style.display = "block";
-  } else {
-    document.getElementById("form_container").style.display = "block";
-  }
-
-  document.getElementById("salva_btn").addEventListener("click", async () => {
-    const gruppi = Array.from(document.querySelectorAll("#gruppo input:checked")).map(cb => cb.value);
-    const nuovoDip = {
-      nome: document.getElementById("nome").value,
-      email: document.getElementById("email").value,
-      password: document.getElementById("password").value,
-      telefono_fisso: document.getElementById("telefono_fisso").value,
-      cellulare: document.getElementById("cellulare").value,
-      gruppo: gruppi.join(", "),
-      ruolo: document.getElementById("ruolo").value,
-      tipo_turno: document.getElementById("tipo_turno").value,
-      ore_accumulate: parseFloat(document.getElementById("ore_accumulate").value) || 0,
-      ore_annuali: parseFloat(document.getElementById("ore_annuali").value) || 0
-    };
-
-    const messaggio = document.getElementById("messaggio");
-
-    try {
-      const { data, error: signupError } = await supabase.auth.admin.createUser({
-        email: nuovoDip.email,
-        password: nuovoDip.password,
-        email_confirm: true
-      });
-
-      if (signupError) {
-        messaggio.textContent = "Errore creazione utente: " + signupError.message;
-        return;
-      }
-
-      const id = data?.user?.id;
-      if (!id) {
-        messaggio.textContent = "Errore: ID utente non restituito.";
-        return;
-      }
-
-      const { error: dbError } = await supabase.from("dipendenti").insert({
-        id,
-        email: nuovoDip.email,
-        nome: nuovoDip.nome,
-        cellulare: nuovoDip.cellulare,
-        telefono_fisso: nuovoDip.telefono_fisso,
-        gruppo: nuovoDip.gruppo,
-        ruolo: nuovoDip.ruolo,
-        tipo_turno: nuovoDip.tipo_turno,
-        ore_accumulate: nuovoDip.ore_accumulate,
-        ore_annuali: nuovoDip.ore_annuali,
-        attivo: true
-      });
-
-      if (dbError) {
-        messaggio.textContent = "Errore inserimento DB: " + dbError.message;
-        return;
-      }
-
-      alert("Dipendente creato correttamente.");
-      window.location.href = "home.html";
-
-    } catch (e) {
-      messaggio.textContent = "Errore imprevisto: " + e.message;
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Registrazione Utente</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9fdf9;
+      padding: 20px;
     }
-  });
-</script>
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .checkbox-group label {
+      margin-right: 10px;
+    }
+    .error {
+      color: red;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🧑‍💼 Registrazione Nuovo Dipendente</h2>
+
+    <label for="nome">Nome</label>
+    <input id="nome" type="text" required>
+
+    <label for="email">Email</label>
+    <input id="email" type="email" required>
+
+    <label for="password">Password</label>
+    <input id="password" type="password" required>
+
+    <label>Gruppo</label>
+    <div id="gruppo" class="checkbox-group">
+      <label><input type="checkbox" value="Cioccolato">Cioccolato</label>
+      <label><input type="checkbox" value="Microbiologia">Microbiologia</label>
+      <label><input type="checkbox" value="Oli">Oli</label>
+      <label><input type="checkbox" value="Allergeni">Allergeni</label>
+      <label><input type="checkbox" value="Contaminanti">Contaminanti</label>
+      <label><input type="checkbox" value="Infoclienti">Infoclienti</label>
+      <label><input type="checkbox" value="Confezionati">Confezionati</label>
+      <label><input type="checkbox" value="Materie Prime">Materie Prime</label>
+    </div>
+
+    <button id="salva_btn">Crea Dipendente</button>
+    <div id="messaggio" class="error"></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://lmcawwcrwqtmylhcbqwi.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE" // ANON KEY QUI
+    );
+
+    document.getElementById("salva_btn").addEventListener("click", async () => {
+      const nome = document.getElementById("nome").value;
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const gruppi = Array.from(document.querySelectorAll("#gruppo input:checked")).map(cb => cb.value).join(", ");
+      const messaggio = document.getElementById("messaggio");
+
+      if (!nome || !email || !password || gruppi.length === 0) {
+        messaggio.textContent = "Compila tutti i campi obbligatori.";
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password
+      });
+
+      if (error) {
+        messaggio.textContent = "Errore: " + error.message;
+        return;
+      }
+
+      const userId = data?.user?.id;
+      if (!userId) {
+        messaggio.textContent = "Utente creato, ma ID non trovato.";
+        return;
+      }
+
+      const { error: insertError } = await supabase.from("dipendenti").insert({
+        id: userId,
+        email,
+        nome,
+        gruppo: gruppi,
+        ruolo: "Analista", // ruolo predefinito per sicurezza
+        attivo: true,
+        ore_accumulate: 0,
+        ore_annuali: 0
+      });
+
+      if (insertError) {
+        messaggio.textContent = "Errore nel salvataggio DB: " + insertError.message;
+        return;
+      }
+
+      alert("Utente creato con successo!");
+      window.location.href = "home.html";
+    });
+  </script>
+</body>
+</html>
