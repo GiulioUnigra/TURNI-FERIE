@@ -1,12 +1,172 @@
-<!-- home.html -->
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <title>Benvenuto</title>
+  <meta charset="UTF-8">
+  <title>Home 🏠</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4fdf4;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #4CAF50;
+      color: white;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    #logout {
+      background-color: #ffffff;
+      color: #4CAF50;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .content {
+      padding: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #fff;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #e0f2e0;
+    }
+    .tooltip {
+      position: relative;
+      cursor: help;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      background-color: #333;
+      color: #fff;
+      text-align: left;
+      padding: 6px;
+      border-radius: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      width: 200px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
 </head>
 <body>
-  <h1>Login riuscito 🎉</h1>
-  <p>Benvenuto nella dashboard.</p>
+  <header>
+    <h1>Benvenuto in Gestione Ferie e Turni</h1>
+    <button id="logout">Logout</button>
+  </header>
+
+  <div class="content">
+    <h2>Dipendenti Attivi</h2>
+    <table id="tabellaDipendenti">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Email</th>
+          <th>Gruppo</th>
+          <th>Ruolo</th>
+          <th>Ore Residue</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const supabase = createClient(
+      'https://lmcawwcrwqtmylhcbqwi.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
+    );
+
+    const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
+    if (!utente) window.location.href = "/index.html";
+
+    document.getElementById("logout").addEventListener("click", () => {
+      localStorage.removeItem("utenteLoggato");
+      window.location.href = "/index.html";
+    });
+
+    const tbody = document.querySelector("#tabellaDipendenti tbody");
+
+    const tuttiIGruppi = [
+      "Infoclienti", "Oli", "Contaminanti", "Microbiologia",
+      "Allergeni", "Confezionati", "Materie Prime", "Cioccolato"
+    ];
+
+    const gruppiVisibili = utente.ruolo === "Responsabile" || utente.ruolo === "Viceresponsabile"
+      ? tuttiIGruppi
+      : (utente.gruppi_gestiti || "").split(",").map(g => g.trim());
+
+    const { data: dipendenti, error } = await supabase
+      .from("dipendenti")
+      .select("id, nome, email, gruppo, ruolo, ore_accumulate, ore_annuali")
+      .eq("attivo", true)
+      .in("gruppo", gruppiVisibili);
+
+    for (let d of dipendenti) {
+      const ferieApprovate = await supabase
+        .from("ferie")
+        .select("data_inizio, giorni")
+        .eq("email_dipendente", d.email)
+        .eq("stato", "Approvata");
+
+      let oreFruite = 0;
+      const mensili = {};
+      ferieApprovate.data?.forEach(f => {
+        oreFruite += f.giorni;
+        const mese = new Date(f.data_inizio).toLocaleString('default', { month: 'short' });
+        mensili[mese] = (mensili[mese] || 0) + f.giorni;
+      });
+
+      const cellNome = document.createElement("td");
+      const wrapper = document.createElement("span");
+      wrapper.classList.add("tooltip");
+      wrapper.textContent = d.nome;
+
+      const tooltip = document.createElement("span");
+      tooltip.classList.add("tooltiptext");
+      tooltip.innerHTML = Object.entries(mensili).map(([m, h]) => `${m}: ${h.toFixed(1)}h`).join("<br>");
+
+      wrapper.appendChild(tooltip);
+      cellNome.appendChild(wrapper);
+
+      const residuo = (d.ore_accumulate + d.ore_annuali - oreFruite).toFixed(2);
+
+      const tr = document.createElement("tr");
+      tr.appendChild(cellNome);
+      tr.innerHTML += `
+        <td>${d.email}</td>
+        <td>${d.gruppo}</td>
+        <td>${d.ruolo}</td>
+        <td>${residuo}</td>`;
+
+      tbody.appendChild(tr);
+    }
+  </script>
 </body>
 </html>
