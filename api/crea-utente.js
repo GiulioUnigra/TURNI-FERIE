@@ -8,17 +8,19 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Metodo non consentito' });
-    return;
+    return res.status(405).json({ error: 'Metodo non consentito' });
   }
 
-  const { nome, email, password, gruppo, ...profilo } = req.body;
-
-  // Email fittizia unica per auth
-  const emailFittizia = `${nome.replace(/\s+/g, '').toLowerCase()}+${email}`;
-
   try {
-    // Crea utente nella tabella Auth
+    const { nome, email, password, gruppo, ...profilo } = req.body;
+
+    if (!nome || !email || !password) {
+      return res.status(400).json({ error: 'Dati mancanti' });
+    }
+
+    // Email fittizia unica per auth
+    const emailFittizia = `${nome.replace(/\s+/g, '').toLowerCase()}+${email}`;
+
     const { data, error: authError } = await supabase.auth.admin.createUser({
       email: emailFittizia,
       password,
@@ -26,36 +28,31 @@ export default async function handler(req, res) {
     });
 
     if (authError) {
-      console.error('Errore AUTH:', authError);
-      res.status(400).json({ error: `Errore Auth: ${authError.message}` });
-      return;
+      return res.status(400).json({ error: `Errore Auth: ${authError.message}` });
     }
 
     const id = data?.user?.id;
     if (!id) {
-      res.status(500).json({ error: 'ID utente non generato.' });
-      return;
+      return res.status(500).json({ error: 'ID utente non generato.' });
     }
 
-    // Inserisce nella tabella dipendenti
+    const gruppoStr = Array.isArray(gruppo) ? gruppo.join(',') : gruppo;
+
     const { error: dbError } = await supabase.from('dipendenti').insert({
       id,
-      email, // Email reale per contatti
+      email,
       nome,
-      gruppo: Array.isArray(gruppo) ? gruppo.join(',') : gruppo,
+      gruppo: gruppoStr,
       ...profilo,
       attivo: true
     });
 
     if (dbError) {
-      console.error('Errore DB:', dbError);
-      res.status(500).json({ error: `Errore DB: ${dbError.message}` });
-      return;
+      return res.status(500).json({ error: `Errore DB: ${dbError.message}` });
     }
 
-    res.status(200).json({ success: true });
+    return res.status(200).json({ success: true });
   } catch (e) {
-    console.error('Errore server:', e);
-    res.status(500).json({ error: 'Errore inaspettato: ' + e.message });
+    return res.status(500).json({ error: 'Errore inaspettato: ' + e.message });
   }
 }
