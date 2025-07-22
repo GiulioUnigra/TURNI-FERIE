@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Riepilogo Dipendenti</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4fdf4;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 40px;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+      text-align: left;
+    }
+    th {
+      background-color: #e0f2e0;
+    }
+    .tooltip {
+      position: relative;
+      cursor: pointer;
+    }
+    .tooltip:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 0;
+      top: 100%;
+      white-space: pre;
+      background: #333;
+      color: #fff;
+      padding: 8px;
+      border-radius: 5px;
+      font-size: 13px;
+      z-index: 1000;
+      width: max-content;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Riepilogo Dipendenti</h2>
+  <div id="tabella"></div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const supabase = createClient(
+      'https://lmcawwcrwqtmylhcbqwi.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
+    );
+
+    const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
+    const tabella = document.getElementById("tabella");
+
+    async function caricaDati() {
+      let query = supabase.from("dipendenti").select("id, nome, email, gruppo, tipo_turno, ore_accumulate, ore_annuali").eq("attivo", true);
+      if (utente.ruolo === 'Referente') {
+        const gruppi = utente.gruppi_gestiti || [];
+        query = query.in("gruppo", gruppi);
+      }
+
+      const { data: dipendenti, error } = await query;
+      if (error) {
+        tabella.innerHTML = `<p>Errore nel caricamento: ${error.message}</p>`;
+        return;
+      }
+
+      const ferieRaw = await supabase.from("ferie").select("email_dipendente, giorni, data_inizio, stato").eq("stato", "Approvata");
+      const feriePerEmail = {};
+
+      ferieRaw.data.forEach(f => {
+        if (!feriePerEmail[f.email_dipendente]) feriePerEmail[f.email_dipendente] = [];
+        feriePerEmail[f.email_dipendente].push(f);
+      });
+
+      let html = `<table><thead><tr><th>Nome</th><th>Email</th><th>Gruppo</th><th>Tipo Turno</th><th>Ore Accumulate</th><th>Ore Annuali</th><th>Ore Fruite</th><th>Ore Residue</th></tr></thead><tbody>`;
+
+      for (const d of dipendenti) {
+        const ferie = feriePerEmail[d.email] || [];
+        const oreFruite = ferie.reduce((tot, f) => tot + f.giorni, 0);
+        const oreResidue = (d.ore_accumulate + d.ore_annuali - oreFruite).toFixed(2);
+
+        // Costruzione tooltip ferie per mese
+        const feriePerMese = ferie.reduce((map, f) => {
+          const meseAnno = new Date(f.data_inizio).toLocaleDateString("it-IT", { year: "numeric", month: "long" });
+          map[meseAnno] = (map[meseAnno] || 0) + f.giorni;
+          return map;
+        }, {});
+
+        const testoTooltip = Object.entries(feriePerMese).map(([m, o]) => `${m}: ${o}h`).join("\n");
+
+        html += `<tr>
+          <td class="tooltip" data-tooltip="${testoTooltip}">${d.nome}</td>
+          <td>${d.email}</td>
+          <td>${d.gruppo}</td>
+          <td>${d.tipo_turno}</td>
+          <td>${d.ore_accumulate}</td>
+          <td>${d.ore_annuali}</td>
+          <td>${oreFruite}</td>
+          <td>${oreResidue}</td>
+        </tr>`;
+      }
+
+      html += `</tbody></table>`;
+      tabella.innerHTML = html;
+    }
+
+    caricaDati();
+  </script>
+</body>
+</html>
