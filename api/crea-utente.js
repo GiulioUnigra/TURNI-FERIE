@@ -1,41 +1,64 @@
-// /api/crea-utente.js
+// Percorso: api/crea-utente.js
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  'https://lmcawwcrwqtmylhcbqwi.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzEwMTUwOCwiZXhwIjoyMDY4Njc3NTA4fQ.YCd4Zx0C1gyxjCyiXLrXXoj0FOeuXt1YAGJEqbzTL34'
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export async function POST(request) {
- try {
-  const response = await fetch('/api/crea-utente', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(nuovoDip)
-  });
-
-  const text = await response.text(); // leggiamo sempre prima come testo
-
-  if (!response.ok) {
-    throw new Error(text);
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Metodo non consentito' });
   }
 
-  let result;
   try {
-    result = JSON.parse(text);
-  } catch (e) {
-    throw new Error("Errore del server (risposta non JSON): " + text);
+    const {
+      nome,
+      email,
+      password,
+      telefono_fisso,
+      cellulare,
+      gruppo,
+      ruolo,
+      tipo_turno,
+      ore_accumulate,
+      ore_annuali
+    } = req.body;
+
+    // 1. Crea l'utente in Supabase Auth
+    const { data: userData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true
+    });
+
+    if (authError) {
+      return res.status(400).json({ error: 'Errore Auth: ' + authError.message });
+    }
+
+    // 2. Inserisci nella tabella "dipendenti"
+    const { error: insertError } = await supabase.from('dipendenti').insert({
+      id: userData.user.id,
+      nome,
+      email,
+      password,
+      telefono_fisso,
+      cellulare,
+      gruppo: Array.isArray(gruppo) ? gruppo.join(',') : gruppo,
+      ruolo,
+      tipo_turno,
+      ore_accumulate: ore_accumulate || 0,
+      ore_annuali: ore_annuali || 0,
+      attivo: true
+    });
+
+    if (insertError) {
+      return res.status(500).json({ error: 'Errore DB: ' + insertError.message });
+    }
+
+    return res.status(200).json({ success: true });
+
+  } catch (err) {
+    return res.status(500).json({ error: 'Errore inatteso: ' + err.message });
   }
-
-  if (result.error) {
-    throw new Error(result.error.message || "Errore generico");
-  }
-
-  document.getElementById("messaggio").textContent = "✅ Dipendente salvato!";
-  document.getElementById("messaggio").style.color = "green";
-
-} catch (error) {
-  console.error("Errore nel salvataggio:", error);
-  document.getElementById("messaggio").textContent = "Errore: " + error.message;
-  document.getElementById("messaggio").style.color = "red";
 }
