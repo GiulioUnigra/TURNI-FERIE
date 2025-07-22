@@ -16,7 +16,7 @@
       max-width: 600px;
       margin: 0 auto;
     }
-    input, select, button {
+    input, select, button, textarea {
       width: 100%;
       padding: 10px;
       margin: 8px 0;
@@ -76,8 +76,8 @@
     <label for="cellulare">Cellulare (opzionale)</label>
     <input id="cellulare" type="text">
 
-    <label for="gruppo">Gruppo</label>
-    <select id="gruppo"></select>
+    <label for="gruppo">Gruppo (uno o più)</label>
+    <select id="gruppo" multiple></select>
 
     <label for="ruolo">Ruolo</label>
     <select id="ruolo">
@@ -168,24 +168,27 @@
       document.getElementById("password").value = data.password;
       document.getElementById("telefono_fisso").value = data.telefono_fisso || "";
       document.getElementById("cellulare").value = data.cellulare || "";
-      document.getElementById("gruppo").value = data.gruppo;
       document.getElementById("ruolo").value = data.ruolo;
       document.getElementById("tipo_turno").value = data.tipo_turno;
       document.getElementById("ore_accumulate").value = data.ore_accumulate;
       document.getElementById("ore_annuali").value = data.ore_annuali;
+      const gruppoSelect = document.getElementById("gruppo");
+      [...gruppoSelect.options].forEach(opt => opt.selected = data.gruppo.includes(opt.value));
     });
 
     async function salvaDipendente() {
       const messaggio = document.getElementById("messaggio");
       messaggio.textContent = "";
       const id = document.getElementById("dipendente_selezionato").value;
+      const gruppiSelezionati = [...document.getElementById("gruppo").selectedOptions].map(opt => opt.value);
+
       const nuovoDip = {
         nome: document.getElementById("nome").value,
         email: document.getElementById("email").value,
         password: document.getElementById("password").value,
         telefono_fisso: document.getElementById("telefono_fisso").value,
         cellulare: document.getElementById("cellulare").value,
-        gruppo: document.getElementById("gruppo").value,
+        gruppo: gruppiSelezionati.join(", "),
         ruolo: document.getElementById("ruolo").value,
         tipo_turno: document.getElementById("tipo_turno").value,
         ore_accumulate: parseFloat(document.getElementById("ore_accumulate").value || 0),
@@ -194,8 +197,8 @@
       };
 
       if (ruolo === "Referente") {
-        if (!gruppiGestiti.includes(nuovoDip.gruppo)) {
-          messaggio.textContent = "Non puoi modificare dipendenti fuori dai tuoi gruppi.";
+        if (!gruppiSelezionati.every(gr => gruppiGestiti.includes(gr))) {
+          messaggio.textContent = "Non puoi assegnare gruppi fuori dai tuoi.");
           return;
         }
         if (nuovoDip.ruolo !== "Analista") {
@@ -205,19 +208,19 @@
       }
 
       if (!id) {
-        const response = await fetch("/api/crea-utente", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(nuovoDip)
-        });
-
-        const result = await response.json();
-        if (!response.ok) {
-          messaggio.textContent = "Errore: " + result.error;
-          return;
+        try {
+          const response = await fetch("/api/crea-utente", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(nuovoDip)
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Errore generico");
+          alert("Dipendente creato correttamente.");
+          window.location.reload();
+        } catch (err) {
+          messaggio.textContent = "Errore: " + err.message;
         }
-        alert("Dipendente creato correttamente.");
-        window.location.reload();
       } else {
         const result = await supabase.from("dipendenti").update(nuovoDip).eq("id", id);
         if (result.error) {
