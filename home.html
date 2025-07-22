@@ -104,5 +104,12 @@
 
     mostraPersonale();
   </script>
+  
+  <script>
+  function logout() {
+    localStorage.removeItem("utenteLoggato");
+    window.location.href = "index.html";
+  }
+</script>
 </body>
 </html>
