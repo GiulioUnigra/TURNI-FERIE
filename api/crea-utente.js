@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     const dati = req.body;
 
-    // 1. Crea utente in auth
+    // Crea utente in auth
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: dati.email,
       password: dati.password,
@@ -21,11 +21,10 @@ export default async function handler(req, res) {
     });
 
     if (authError) {
-      console.error("Errore creazione auth:", authError);
       return res.status(500).json({ error: 'Errore creazione auth', dettagli: authError.message });
     }
 
-    // 2. Inserisci in tabella dipendenti
+    // Inserisci in tabella dipendenti
     const { error: dbError } = await supabase.from('dipendenti').insert([{
       id: authData.user.id,
       nome: dati.nome,
@@ -42,14 +41,12 @@ export default async function handler(req, res) {
     }]);
 
     if (dbError) {
-      console.error("Errore inserimento DB:", dbError);
       return res.status(500).json({ error: 'Errore inserimento DB', dettagli: dbError.message });
     }
 
     return res.status(200).json({ successo: true });
 
   } catch (err) {
-    console.error("Errore imprevisto:", err);
     return res.status(500).json({ error: 'Errore server', dettagli: err.message });
   }
 }
