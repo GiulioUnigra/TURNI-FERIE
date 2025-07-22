@@ -7,124 +7,139 @@
     body {
       font-family: Arial, sans-serif;
       background-color: #f4fcf4;
+      margin: 0;
       padding: 20px;
     }
     h2 {
       text-align: center;
     }
-    .scheda {
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      max-width: 600px;
-      margin: auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .riga {
-      margin-bottom: 10px;
-    }
-    .etichetta {
-      font-weight: bold;
-    }
-    .moduli {
-      margin-top: 30px;
-      text-align: center;
-    }
-    .moduli a {
-      margin: 5px;
-      display: inline-block;
-      background: #4CAF50;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 6px;
-      text-decoration: none;
-    }
-    .moduli a:hover {
-      background: #45a049;
-    }
-    .logout {
-      position: absolute;
-      top: 20px;
-      left: 20px;
+    .logout-btn {
       background-color: #4CAF50;
       color: white;
       padding: 8px 16px;
       border: none;
-      border-radius: 6px;
+      border-radius: 4px;
+      float: right;
       cursor: pointer;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .moduli {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .moduli a {
+      padding: 10px 20px;
+      border-radius: 8px;
+      background-color: #90c695;
+      color: white;
+      text-decoration: none;
+    }
+    .moduli a:hover {
+      background-color: #7dbb80;
     }
   </style>
 </head>
 <body>
-
-  <button class="logout" onclick="logout()">Logout</button>
+  <button class="logout-btn" onclick="logout()">Logout</button>
   <h2>Benvenuto</h2>
 
-  <div class="scheda" id="scheda-utente">
-    <div class="riga"><span class="etichetta">Nome:</span> <span id="nome"></span></div>
-    <div class="riga"><span class="etichetta">Email:</span> <span id="email"></span></div>
-    <div class="riga"><span class="etichetta">Gruppo:</span> <span id="gruppo"></span></div>
-    <div class="riga"><span class="etichetta">Ruolo:</span> <span id="ruolo"></span></div>
-    <div class="riga"><span class="etichetta">Tipo Turno:</span> <span id="turno"></span></div>
-    <div class="riga"><span class="etichetta">Ore Accumulate:</span> <span id="accumulate"></span></div>
-    <div class="riga"><span class="etichetta">Monte Ore Annuali:</span> <span id="annuali"></span></div>
+  <div id="scheda-personale" class="card">
+    <p>Caricamento dati personali...</p>
   </div>
 
-  <div class="moduli" id="moduli-accesso" style="display:none;">
-    <a href="riepilogo.html">Riepilogo Dipendenti</a>
-    <a href="gestione_dipendenti.html">Gestione Dipendenti</a>
-    <a href="richiesta_ferie.html">Richiesta Ferie</a>
-    <a href="approvazione.html">Approvazione Ferie</a>
-    <a href="gestione_turni.html">Gestione Turni</a>
-    <a href="calendario.html">Calendario</a>
-    <a href="appunti.html">Appunti</a>
-    <a href="archiviazione.html">Archiviazione</a>
-  </div>
+  <div class="moduli" id="moduli-accessibili" style="display:none;"></div>
 
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
     const supabase = createClient(
       'https://lmcawwcrwqtmylhcbqwi.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
-    )
+    );
 
     const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
-    if (!utente) {
-      window.location.href = "index.html";
-    }
+    if (!utente) window.location.href = "index.html";
 
     async function mostraPersonale() {
       const { data, error } = await supabase
         .from("dipendenti")
         .select("*")
-        .eq("email", utente.email);
+        .eq("email", utente.email)
+        .single();
 
-      if (error || !data || data.length === 0) {
-        console.error("Errore caricamento dati:", error);
+      if (error || !data) {
+        document.getElementById("scheda-personale").innerHTML = `<p>Errore nel caricamento: ${error?.message || 'Utente non trovato'}</p>`;
         return;
       }
 
-      const d = data[0];
-      document.getElementById("nome").innerText = d.nome;
-      document.getElementById("email").innerText = d.email;
-      document.getElementById("gruppo").innerText = d.gruppo;
-      document.getElementById("ruolo").innerText = d.ruolo;
-      document.getElementById("turno").innerText = d.tipo_turno || 'Standard';
-      document.getElementById("accumulate").innerText = d.ore_accumulate || 0;
-      document.getElementById("annuali").innerText = d.ore_annuali || 0;
+      const ferie = await supabase
+        .from("ferie")
+        .select("ore")
+        .eq("email_dipendente", utente.email)
+        .eq("stato", "Approvata");
 
-      if (["Responsabile", "Viceresponsabile", "Referente"].includes(d.ruolo)) {
-        document.getElementById("moduli-accesso").style.display = "block";
+      const ore_fruite = ferie.data?.reduce((tot, f) => tot + f.ore, 0) || 0;
+      const ore_residue = data.ore_accumulate + data.ore_annuali - ore_fruite;
+
+      document.getElementById("scheda-personale").innerHTML = `
+        <h3>${data.nome}</h3>
+        <p><strong>Email:</strong> ${data.email}</p>
+        <p><strong>Gruppo:</strong> ${data.gruppo}</p>
+        <p><strong>Ruolo:</strong> ${data.ruolo}</p>
+        <p><strong>Ore accumulate:</strong> ${data.ore_accumulate}</p>
+        <p><strong>Monte ore annuali:</strong> ${data.ore_annuali}</p>
+        <p><strong>Ore fruite:</strong> ${ore_fruite}</p>
+        <p><strong>Ore residue:</strong> ${ore_residue}</p>
+      `;
+
+      mostraModuli(data.ruolo);
+    }
+
+    function mostraModuli(ruolo) {
+      const container = document.getElementById("moduli-accessibili");
+      container.style.display = "flex";
+      const moduli = [
+        { nome: "Richiesta Ferie", file: "richieste.html" },
+        { nome: "Calendario", file: "calendario.html" }
+      ];
+
+      if (["Responsabile", "Viceresponsabile", "Referente"].includes(ruolo)) {
+        moduli.push({ nome: "Approvazione Ferie", file: "approvazione.html" });
+        moduli.push({ nome: "Gestione Turni", file: "gestione_turni.html" });
+        moduli.push({ nome: "Riepilogo", file: "riepilogo.html" });
       }
+
+      if (["Responsabile", "Viceresponsabile"].includes(ruolo)) {
+        moduli.push({ nome: "Gestione Personale", file: "gestione_dipendenti.html" });
+        moduli.push({ nome: "Archiviazione", file: "archiviazione.html" });
+      }
+
+      moduli.push({ nome: "Appunti", file: "appunti.html" });
+
+      container.innerHTML = moduli.map(m =>
+        `<a href="${m.file}">${m.nome}</a>`
+      ).join("");
     }
 
     mostraPersonale();
 
-    function logout() {
+    // Fix: esporta logout
+    window.logout = function () {
       localStorage.removeItem("utenteLoggato");
       window.location.href = "index.html";
-    }
+    };
   </script>
 </body>
 </html>
