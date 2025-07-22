@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - Gestione Dipendenti</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #eef6ee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    form {
+      background-color: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 320px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .errore {
+      color: red;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <form id="login-form">
+    <h2>Accedi</h2>
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit">Login</button>
+    <div class="errore" id="errore"></div>
+  </form>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+    const supabase = createClient(
+      'https://lmcawwcrwqtmylhcbqwi.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
+    );
+
+    const form = document.getElementById("login-form");
+    const errore = document.getElementById("errore");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errore.textContent = "";
+
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        errore.textContent = "Credenziali errate o utente non trovato.";
+        return;
+      }
+
+      // Recupero profilo dalla tabella dipendenti
+      const { data: profilo, error: profiloErr } = await supabase
+        .from("dipendenti")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profiloErr) {
+        errore.textContent = "Errore nel recupero del profilo: " + profiloErr.message;
+        return;
+      }
+
+      localStorage.setItem("utenteLoggato", JSON.stringify(profilo));
+      window.location.href = "home.html";
+    });
+  </script>
+</body>
+</html>
