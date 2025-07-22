@@ -7,27 +7,35 @@ const supabase = createClient(
 );
 
 export async function POST(request) {
-  try {
-    const nuovoDip = await request.json();
+ try {
+  const response = await fetch('/api/crea-utente', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(nuovoDip)
+  });
 
-    const { data, error } = await supabase.from("dipendenti").upsert([nuovoDip], { onConflict: ['email'] });
-    
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+  const text = await response.text(); // leggiamo sempre prima come testo
 
-    return new Response(JSON.stringify({ message: "Dipendente salvato con successo", data }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  if (!response.ok) {
+    throw new Error(text);
   }
+
+  let result;
+  try {
+    result = JSON.parse(text);
+  } catch (e) {
+    throw new Error("Errore del server (risposta non JSON): " + text);
+  }
+
+  if (result.error) {
+    throw new Error(result.error.message || "Errore generico");
+  }
+
+  document.getElementById("messaggio").textContent = "✅ Dipendente salvato!";
+  document.getElementById("messaggio").style.color = "green";
+
+} catch (error) {
+  console.error("Errore nel salvataggio:", error);
+  document.getElementById("messaggio").textContent = "Errore: " + error.message;
+  document.getElementById("messaggio").style.color = "red";
 }
