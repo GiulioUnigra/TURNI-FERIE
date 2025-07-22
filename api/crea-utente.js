@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { nome, email, password, ...profilo } = req.body;
+  const { nome, email, password, gruppo, ...profilo } = req.body;
 
   // Email fittizia unica per auth
   const emailFittizia = nome.replace(/\s+/g, '').toLowerCase() + "+" + email;
@@ -40,6 +40,7 @@ export default async function handler(req, res) {
       id,
       email, // Email reale visibile nei dati dipendenti
       nome,
+      gruppo: Array.isArray(gruppo) ? gruppo.join(',') : gruppo,
       ...profilo,
       attivo: true
     });
