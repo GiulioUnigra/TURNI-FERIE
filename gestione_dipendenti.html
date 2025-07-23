@@ -65,6 +65,11 @@
   <div class="container">
     <div id="permesso_negato" class="error" style="display: none;">Accesso non autorizzato.</div>
     <div id="form_container" style="display: none;">
+      <label for="dipendente_selezionato">Dipendente</label>
+      <select id="dipendente_selezionato">
+        <option value="">-- Nuovo Dipendente --</option>
+      </select>
+
       <label for="nome">Nome</label>
       <input id="nome" type="text">
 
@@ -114,18 +119,67 @@
       <input id="ore_annuali" type="number" step="0.01">
 
       <button id="salva_btn">Salva Dipendente</button>
+      <button id="elimina_btn" style="background-color: darkred; display: none;">Elimina Dipendente</button>
       <div id="messaggio" class="error"></div>
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const supabase = createClient(
+      'https://lmcawwcrwqtmylhcbqwi.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
+    );
+
     const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
     const ruolo = utente?.ruolo;
+    const gruppiGestiti = Array.isArray(utente?.gruppi_gestiti) ? utente.gruppi_gestiti : (utente?.gruppi_gestiti || '').split(',').map(g => g.trim());
 
     if (!utente || ruolo === "Analista") {
       document.getElementById("permesso_negato").style.display = "block";
     } else {
       document.getElementById("form_container").style.display = "block";
+      caricaDipendenti();
+    }
+
+    async function caricaDipendenti() {
+      const { data, error } = await supabase.from('dipendenti').select('*');
+      if (error || !data) return;
+
+      const selettore = document.getElementById("dipendente_selezionato");
+      data.forEach(d => {
+        const gruppiUtente = (d.gruppo || '').split(',').map(g => g.trim());
+        if (ruolo === 'Responsabile' || ruolo === 'Viceresponsabile' || gruppiUtente.some(g => gruppiGestiti.includes(g))) {
+          const opt = document.createElement("option");
+          opt.value = d.id;
+          opt.textContent = d.nome;
+          selettore.appendChild(opt);
+        }
+      });
+
+      selettore.addEventListener("change", () => {
+        const selezionato = data.find(d => d.id === selettore.value);
+        if (!selezionato) return pulisciCampi();
+        document.getElementById("nome").value = selezionato.nome || '';
+        document.getElementById("email").value = selezionato.email || '';
+        document.getElementById("password").value = '';
+        document.getElementById("telefono_fisso").value = selezionato.telefono_fisso || '';
+        document.getElementById("cellulare").value = selezionato.cellulare || '';
+        document.getElementById("ruolo").value = selezionato.ruolo || 'Analista';
+        document.getElementById("tipo_turno").value = selezionato.tipo_turno || 'Standard';
+        document.getElementById("ore_accumulate").value = selezionato.ore_accumulate || 0;
+        document.getElementById("ore_annuali").value = selezionato.ore_annuali || 0;
+        document.querySelectorAll("#gruppo input").forEach(cb => {
+          cb.checked = (selezionato.gruppo || '').split(',').includes(cb.value);
+        });
+        document.getElementById("elimina_btn").style.display = "inline-block";
+      });
+    }
+
+    function pulisciCampi() {
+      document.querySelectorAll("input").forEach(i => i.value = '');
+      document.querySelectorAll("#gruppo input").forEach(cb => cb.checked = false);
+      document.getElementById("elimina_btn").style.display = "none";
     }
 
     document.getElementById("salva_btn").addEventListener("click", async () => {
@@ -133,6 +187,7 @@
       const emailPrincipale = document.getElementById("email").value;
       const nome = document.getElementById("nome").value;
       const emailFittizia = nome.replace(/\s+/g, '').toLowerCase() + "+" + emailPrincipale;
+      const idEsistente = document.getElementById("dipendente_selezionato").value;
 
       const nuovoDip = {
         nome,
@@ -148,26 +203,47 @@
       };
 
       const messaggio = document.getElementById("messaggio");
-      const response = await fetch("/api/crea-utente", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nuovoDip)
-      });
-
       let result;
       try {
+        const response = await fetch("/api/crea-utente" + (idEsistente ? `?id=${idEsistente}` : ""), {
+          method: idEsistente ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(nuovoDip)
+        });
         result = await response.json();
+
+        if (!response.ok) {
+          messaggio.textContent = "Errore: " + result.error;
+          return;
+        }
+
+        alert("Dipendente salvato correttamente.");
+        window.location.reload();
       } catch (e) {
         messaggio.textContent = "Errore del server: risposta non valida.";
-        return;
       }
-      if (!response.ok) {
-        messaggio.textContent = "Errore: " + result.error;
-        return;
-      }
+    });
 
-      alert("Dipendente creato correttamente.");
-      window.location.href = "home.html";
+    document.getElementById("elimina_btn").addEventListener("click", async () => {
+      const id = document.getElementById("dipendente_selezionato").value;
+      if (!id) return;
+      if (!confirm("Sei sicuro di voler eliminare questo dipendente?")) return;
+
+      const messaggio = document.getElementById("messaggio");
+      try {
+        const response = await fetch(`/api/crea-utente?id=${id}`, {
+          method: "DELETE"
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          messaggio.textContent = "Errore: " + result.error;
+          return;
+        }
+        alert("Dipendente eliminato correttamente.");
+        window.location.reload();
+      } catch (e) {
+        messaggio.textContent = "Errore del server: risposta non valida.";
+      }
     });
   </script>
 </body>
