@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ message: 'Utente creato' });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: err.message, debug: err });
     }
   }
 
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ message: 'Utente aggiornato' });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: err.message, debug: err });
     }
   }
 
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ message: 'Utente eliminato' });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: err.message, debug: err });
     }
   }
 
