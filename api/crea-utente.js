@@ -1,5 +1,3 @@
-// Percorso: /api/crea-utente.js
-
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -8,59 +6,57 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  const id = req.query.id;
+  const { method } = req;
 
-  if (req.method === 'POST') {
+  if (method === 'POST') {
     const { email, password, ...profilo } = req.body;
     try {
-      const { data, error: authError } = await supabase.auth.admin.createUser({
+      // Crea utente nell'autenticazione
+      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
         email,
         password,
         email_confirm: true
       });
 
-      if (authError) return res.status(400).json({ error: authError.message });
+      if (authError) throw authError;
+      const userId = authUser.user.id;
 
-      const userId = data.user?.id;
-      if (!userId) return res.status(500).json({ error: 'ID utente non generato.' });
+      // Salva profilo in tabella dipendenti
+      const { error: insertError } = await supabase.from('dipendenti').insert([{ id: userId, email, ...profilo }]);
+      if (insertError) throw insertError;
 
-      const { error: insertError } = await supabase.from('dipendenti').insert({
-        id: userId,
-        email,
-        ...profilo,
-        attivo: true
-      });
-
-      if (insertError) return res.status(500).json({ error: insertError.message });
-
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: 'Errore inaspettato: ' + e.message });
+      return res.status(200).json({ message: 'Utente creato' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
     }
   }
 
-  if (req.method === 'PUT' && id) {
+  if (method === 'PUT') {
+    const id = req.query.id;
+    const { password, ...aggiornamento } = req.body;
     try {
-      const { password, ...profilo } = req.body;
-      const { error } = await supabase.from('dipendenti').update(profilo).eq('id', id);
-      if (error) return res.status(500).json({ error: error.message });
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: 'Errore durante aggiornamento: ' + e.message });
+      if (password) {
+        await supabase.auth.admin.updateUserById(id, { password });
+      }
+      const { error: updateError } = await supabase.from('dipendenti').update(aggiornamento).eq('id', id);
+      if (updateError) throw updateError;
+
+      return res.status(200).json({ message: 'Utente aggiornato' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
     }
   }
 
-  if (req.method === 'DELETE' && id) {
+  if (method === 'DELETE') {
+    const id = req.query.id;
     try {
-      const { error: authError } = await supabase.auth.admin.deleteUser(id);
-      if (authError) return res.status(500).json({ error: 'Errore auth: ' + authError.message });
+      await supabase.auth.admin.deleteUser(id);
+      const { error: deleteError } = await supabase.from('dipendenti').delete().eq('id', id);
+      if (deleteError) throw deleteError;
 
-      const { error: dbError } = await supabase.from('dipendenti').delete().eq('id', id);
-      if (dbError) return res.status(500).json({ error: 'Errore DB: ' + dbError.message });
-
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: 'Errore inatteso: ' + e.message });
+      return res.status(200).json({ message: 'Utente eliminato' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
     }
   }
 
