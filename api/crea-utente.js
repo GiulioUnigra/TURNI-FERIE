@@ -11,7 +11,6 @@ export default async function handler(req, res) {
   if (method === 'POST') {
     const { email, password, ...profilo } = req.body;
     try {
-      // Crea utente nell'autenticazione
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
         email,
         password,
@@ -19,14 +18,15 @@ export default async function handler(req, res) {
       });
 
       if (authError) throw authError;
-      const userId = authUser.user.id;
+      if (!authUser || !authUser.user || !authUser.user.id) throw new Error('ID utente non generato');
 
-      // Salva profilo in tabella dipendenti
+      const userId = authUser.user.id;
       const { error: insertError } = await supabase.from('dipendenti').insert([{ id: userId, email, ...profilo }]);
       if (insertError) throw insertError;
 
       return res.status(200).json({ message: 'Utente creato' });
     } catch (err) {
+      console.error("Errore durante la creazione utente:", err);
       return res.status(500).json({ error: err.message, debug: err });
     }
   }
@@ -43,6 +43,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ message: 'Utente aggiornato' });
     } catch (err) {
+      console.error("Errore durante aggiornamento:", err);
       return res.status(500).json({ error: err.message, debug: err });
     }
   }
@@ -56,6 +57,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ message: 'Utente eliminato' });
     } catch (err) {
+      console.error("Errore durante eliminazione:", err);
       return res.status(500).json({ error: err.message, debug: err });
     }
   }
