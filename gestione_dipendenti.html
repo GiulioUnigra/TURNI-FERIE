@@ -204,24 +204,21 @@
 
       const messaggio = document.getElementById("messaggio");
       let result;
-      try {
-        const response = await fetch("/api/crea-utente" + (idEsistente ? `?id=${idEsistente}` : ""), {
-          method: idEsistente ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(nuovoDip)
-        });
-        result = await response.json();
+      let result;
+try {
+  result = await response.json();
+  if (!response.ok) {
+    console.error("Errore dettagliato dal server:", result);
+    messaggio.textContent = "Errore: " + result.error + (result.debug?.message ? " (" + result.debug.message + ")" : "");
+    return;
+  }
 
-        if (!response.ok) {
-          messaggio.textContent = "Errore: " + result.error;
-          return;
-        }
-
-        alert("Dipendente salvato correttamente.");
-        window.location.reload();
-      } catch (e) {
-        messaggio.textContent = "Errore del server: risposta non valida.";
-      }
+  alert("Dipendente creato correttamente.");
+  window.location.href = "home.html";
+} catch (e) {
+  console.error("Errore nel parsing JSON:", e);
+  messaggio.textContent = "Errore del server: risposta non valida.";
+}
     });
 
     document.getElementById("elimina_btn").addEventListener("click", async () => {
