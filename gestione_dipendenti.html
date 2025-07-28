@@ -15,6 +15,11 @@
 <body>
   <h1>👨‍💼 Gestione Dipendenti</h1>
 
+  <label for="dipSelect">Seleziona Dipendente</label>
+  <select id="dipSelect">
+    <option value="">-- Nuovo Dipendente --</option>
+  </select>
+
   <form id="dipForm">
     <input type="text" name="nome" placeholder="Nome" required />
     <input type="email" name="email" placeholder="Email (principale)" required />
@@ -35,18 +40,63 @@
 
   <script>
     const API_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/functions/v1/crea-utente';
+    const REST_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/rest/v1/dipendenti';
+    const headers = {
+      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE',
+      'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
+    };
 
     const form = document.getElementById('dipForm');
+    const select = document.getElementById('dipSelect');
     const msg = document.getElementById('msg');
+
+    let utenti = [];
+
+    async function caricaDipendenti() {
+      const res = await fetch(REST_URL, { headers });
+      utenti = await res.json();
+      utenti.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = d.nome + ' (' + d.email + ')';
+        select.appendChild(opt);
+      });
+    }
+
+    select.addEventListener('change', () => {
+      msg.textContent = '';
+      const id = select.value;
+      if (!id) {
+        form.reset();
+        return;
+      }
+      const utente = utenti.find(u => u.id === id);
+      if (utente) {
+        form.nome.value = utente.nome || '';
+        form.email.value = utente.email || '';
+        form.password.value = '';
+        form.telefono_fisso.value = utente.telefono_fisso || '';
+        form.cellulare.value = utente.cellulare || '';
+        form.gruppo.value = utente.gruppo || '';
+        form.ruolo.value = utente.ruolo || '';
+        form.tipo_turno.value = utente.tipo_turno || '';
+        form.ore_accumulate.value = utente.ore_accumulate || '';
+        form.monte_ore_annuali.value = utente.monte_ore_annuali || '';
+      }
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       msg.textContent = '';
       const data = Object.fromEntries(new FormData(form).entries());
+      const id = select.value;
+
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `${API_URL}?id=${id}` : API_URL;
 
       try {
-        const res = await fetch(API_URL, {
-          method: 'POST',
+        const res = await fetch(url, {
+          method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         });
@@ -60,33 +110,26 @@
     });
 
     async function eliminaDipendente() {
-      const email = prompt("Inserisci l'email del dipendente da eliminare:");
-      if (!email) return;
+      const id = select.value;
+      if (!id) {
+        alert("Seleziona un dipendente da eliminare.");
+        return;
+      }
+      if (!confirm("Sei sicuro di voler eliminare questo dipendente?")) return;
 
       try {
-        const id = await trovaIdDipendente(email);
-        if (!id) throw new Error('ID non trovato');
-
         const res = await fetch(`${API_URL}?id=${id}`, { method: 'DELETE' });
         const result = await res.json();
         msg.textContent = result.message || result.error;
         msg.className = res.ok ? 'success' : 'error';
+        if (res.ok) location.reload();
       } catch (err) {
         msg.textContent = err.message;
         msg.className = 'error';
       }
     }
 
-    async function trovaIdDipendente(email) {
-      const res = await fetch('https://lmcawwcrwqtmylhcbqwi.supabase.co/rest/v1/dipendenti?email=eq.' + encodeURIComponent(email), {
-        headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
-        }
-      });
-      const json = await res.json();
-      return json[0]?.id || null;
-    }
+    caricaDipendenti();
   </script>
 </body>
 </html>
