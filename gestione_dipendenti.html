@@ -1,176 +1,92 @@
+<!-- gestione_dipendenti.html -->
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gestione Dipendenti</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f9fdf9;
-      padding: 20px;
-    }
-    h2 {
-      text-align: center;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    input, select, button, textarea {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      box-sizing: border-box;
-    }
-    button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-      border-radius: 5px;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .error {
-      color: red;
-      text-align: center;
-    }
-    .back-home {
-      display: block;
-      width: fit-content;
-      margin: 0 auto 20px auto;
-      text-align: center;
-      padding: 8px 16px;
-      background-color: #ccc;
-      color: #000;
-      border-radius: 5px;
-      text-decoration: none;
-    }
-    .back-home:hover {
-      background-color: #bbb;
-    }
-    .checkbox-group {
-      display: flex;
-      flex-wrap: wrap;
-    }
-    .checkbox-group label {
-      margin-right: 10px;
-    }
+    body { font-family: sans-serif; background: #f7fcf7; margin: 2rem; }
+    input, select, button { display: block; margin-bottom: 1rem; padding: 0.5rem; width: 100%; }
+    .success { color: green; }
+    .error { color: red; }
   </style>
 </head>
 <body>
-  <a href="home.html" class="back-home">⬅ Torna alla Home</a>
-  <h2>🧑‍💼 Gestione Dipendenti</h2>
-  <div class="container">
-    <div id="permesso_negato" class="error" style="display: none;">Accesso non autorizzato.</div>
-    <div id="form_container" style="display: none;">
-      <label for="nome">Nome</label>
-      <input id="nome" type="text">
+  <h1>👨‍💼 Gestione Dipendenti</h1>
 
-      <label for="email">Email (principale)</label>
-      <input id="email" type="email">
+  <form id="dipForm">
+    <input type="text" name="nome" placeholder="Nome" required />
+    <input type="email" name="email" placeholder="Email (principale)" required />
+    <input type="password" name="password" placeholder="Password" required />
+    <input type="text" name="telefono_fisso" placeholder="Telefono Fisso" />
+    <input type="text" name="cellulare" placeholder="Cellulare" />
+    <input type="text" name="gruppo" placeholder="Gruppo" />
+    <input type="text" name="ruolo" placeholder="Ruolo" />
+    <input type="text" name="tipo_turno" placeholder="Tipo Turno" />
+    <input type="number" name="ore_accumulate" placeholder="Ore accumulate" step="0.1" />
+    <input type="number" name="monte_ore_annuali" placeholder="Monte ore annuali" />
 
-      <label for="password">Password</label>
-      <input id="password" type="password">
+    <button type="submit">Salva Dipendente</button>
+    <button type="button" onclick="eliminaDipendente()">Elimina Dipendente</button>
+  </form>
 
-      <label for="telefono_fisso">Telefono Fisso</label>
-      <input id="telefono_fisso" type="text">
-
-      <label for="cellulare">Cellulare</label>
-      <input id="cellulare" type="text">
-
-      <label>Gruppo</label>
-      <div id="gruppo" class="checkbox-group">
-        <label><input type="checkbox" value="Cioccolato">Cioccolato</label>
-        <label><input type="checkbox" value="Microbiologia">Microbiologia</label>
-        <label><input type="checkbox" value="Oli">Oli</label>
-        <label><input type="checkbox" value="Allergeni">Allergeni</label>
-        <label><input type="checkbox" value="Contaminanti">Contaminanti</label>
-        <label><input type="checkbox" value="Infoclienti">Infoclienti</label>
-        <label><input type="checkbox" value="Confezionati">Confezionati</label>
-        <label><input type="checkbox" value="Materie Prime">Materie Prime</label>
-      </div>
-
-      <label for="ruolo">Ruolo</label>
-      <select id="ruolo">
-        <option>Analista</option>
-        <option>Referente</option>
-        <option>Responsabile</option>
-        <option>Viceresponsabile</option>
-      </select>
-
-      <label for="tipo_turno">Tipo Turno</label>
-      <select id="tipo_turno">
-        <option>Standard</option>
-        <option>Altro</option>
-        <option>Ciclo Continuo</option>
-      </select>
-
-      <label for="ore_accumulate">Ore accumulate</label>
-      <input id="ore_accumulate" type="number" step="0.01">
-
-      <label for="ore_annuali">Monte ore annuali</label>
-      <input id="ore_annuali" type="number" step="0.01">
-
-      <button id="salva_btn">Salva Dipendente</button>
-      <div id="messaggio" class="error"></div>
-    </div>
-  </div>
+  <p id="msg"></p>
 
   <script>
-    const utente = JSON.parse(localStorage.getItem("utenteLoggato"));
-    const ruolo = utente?.ruolo;
+    const API_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/functions/v1/crea-utente';
 
-    if (!utente || ruolo === "Analista") {
-      document.getElementById("permesso_negato").style.display = "block";
-    } else {
-      document.getElementById("form_container").style.display = "block";
-    }
+    const form = document.getElementById('dipForm');
+    const msg = document.getElementById('msg');
 
-    document.getElementById("salva_btn").addEventListener("click", async () => {
-      const gruppi = Array.from(document.querySelectorAll("#gruppo input:checked")).map(cb => cb.value);
-      const emailPrincipale = document.getElementById("email").value;
-      const nome = document.getElementById("nome").value;
-      const emailFittizia = nome.replace(/\s+/g, '').toLowerCase() + "+" + emailPrincipale;
-
-      const nuovoDip = {
-        nome,
-        email: emailFittizia,
-        password: document.getElementById("password").value,
-        telefono_fisso: document.getElementById("telefono_fisso").value,
-        cellulare: document.getElementById("cellulare").value,
-        gruppo: gruppi.join(", "),
-        ruolo: document.getElementById("ruolo").value,
-        tipo_turno: document.getElementById("tipo_turno").value,
-        ore_accumulate: parseFloat(document.getElementById("ore_accumulate").value) || 0,
-        ore_annuali: parseFloat(document.getElementById("ore_annuali").value) || 0
-      };
-
-      const messaggio = document.getElementById("messaggio");
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = '';
+      const data = Object.fromEntries(new FormData(form).entries());
 
       try {
-        const response = await fetch("/api/crea-utente", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(nuovoDip)
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
         });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          console.error("Errore dettagliato dal server:", result);
-          messaggio.textContent = "Errore: " + result.error + (result.debug?.message ? " (" + result.debug.message + ")" : "");
-          return;
-        }
-
-        alert("Dipendente creato correttamente.");
-        window.location.href = "home.html";
-      } catch (e) {
-        console.error("Errore nel parsing JSON:", e);
-        messaggio.textContent = "Errore del server: risposta non valida.";
+        const result = await res.json();
+        msg.textContent = result.message || result.error;
+        msg.className = res.ok ? 'success' : 'error';
+      } catch (err) {
+        msg.textContent = 'Errore di rete';
+        msg.className = 'error';
       }
     });
+
+    async function eliminaDipendente() {
+      const email = prompt("Inserisci l'email del dipendente da eliminare:");
+      if (!email) return;
+
+      try {
+        const id = await trovaIdDipendente(email);
+        if (!id) throw new Error('ID non trovato');
+
+        const res = await fetch(`${API_URL}?id=${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        msg.textContent = result.message || result.error;
+        msg.className = res.ok ? 'success' : 'error';
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = 'error';
+      }
+    }
+
+    async function trovaIdDipendente(email) {
+      const res = await fetch('https://lmcawwcrwqtmylhcbqwi.supabase.co/rest/v1/dipendenti?email=eq.' + encodeURIComponent(email), {
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
+        }
+      });
+      const json = await res.json();
+      return json[0]?.id || null;
+    }
   </script>
 </body>
 </html>
