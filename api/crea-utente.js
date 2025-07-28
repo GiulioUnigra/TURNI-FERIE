@@ -1,7 +1,6 @@
-// file: index.js (dentro la funzione Edge 'crea-utente')
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Inizializza il client con le variabili ambiente protette
+// Inizializza il client con le variabili di ambiente
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL'),
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -9,18 +8,17 @@ const supabase = createClient(
 
 Deno.serve(async (req) => {
   const { method } = req
+  const url = new URL(req.url)
 
   try {
-    const url = new URL(req.url)
-
-    // Se il metodo è POST, crea un nuovo utente
+    // === POST: crea utente ===
     if (method === 'POST') {
       const { email, password, ...profilo } = await req.json()
 
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
         email,
         password,
-        email_confirm: true
+        email_confirm: true,
       })
 
       if (authError) throw authError
@@ -33,16 +31,17 @@ Deno.serve(async (req) => {
 
       if (insertError) throw insertError
 
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ message: 'Utente creato' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    // Se il metodo è PUT, aggiorna l'utente
+    // === PUT: aggiorna utente ===
     if (method === 'PUT') {
       const id = url.searchParams.get('id')
-      if (!id) throw new Error("ID utente mancante")
+      if (!id) throw new Error('ID mancante per aggiornamento')
+
       const { password, ...aggiornamento } = await req.json()
 
       if (password) {
@@ -56,16 +55,16 @@ Deno.serve(async (req) => {
 
       if (updateError) throw updateError
 
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ message: 'Utente aggiornato' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    // Se il metodo è DELETE, elimina l'utente
+    // === DELETE: elimina utente ===
     if (method === 'DELETE') {
       const id = url.searchParams.get('id')
-      if (!id) throw new Error("ID utente mancante")
+      if (!id) throw new Error('ID mancante per eliminazione')
 
       await supabase.auth.admin.deleteUser(id)
 
@@ -76,20 +75,20 @@ Deno.serve(async (req) => {
 
       if (deleteError) throw deleteError
 
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ message: 'Utente eliminato' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    // Metodo non supportato
+    // Metodo non consentito
     return new Response(JSON.stringify({ error: 'Metodo non consentito' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' },
     })
 
   } catch (err) {
-    console.error('Errore:', err)
+    console.error('Errore durante la funzione crea-utente:', err)
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
