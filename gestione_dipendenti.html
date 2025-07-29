@@ -154,8 +154,9 @@
       try {
         const res = await fetch(`${API_URL}?id=${id}`, {
           method: 'DELETE',
-          headers: headers
-        });
+         headers: {
+           'Content-Type': 'application/json'
+          },
         const result = await res.json();
         msg.textContent = result.message || result.error;
         msg.className = res.ok ? 'success' : 'error';
