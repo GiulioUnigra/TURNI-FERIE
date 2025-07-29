@@ -26,33 +26,34 @@
     <input type="password" name="password" placeholder="Password" required />
     <input type="text" name="telefono_fisso" placeholder="Telefono Fisso" />
     <input type="text" name="cellulare" placeholder="Cellulare" />
+
     <fieldset>
-  <legend>Gruppo</legend>
-  <label><input type="checkbox" name="gruppo" value="Cioccolato" /> Cioccolato</label>
-  <label><input type="checkbox" name="gruppo" value="Confezionati" /> Confezionati</label>
-  <label><input type="checkbox" name="gruppo" value="Oli" /> Oli</label>
-  <label><input type="checkbox" name="gruppo" value="Allergeni" /> Allergeni</label>
-  <label><input type="checkbox" name="gruppo" value="Microbiologia" /> Microbiologia</label>
-  <label><input type="checkbox" name="gruppo" value="Materie Prime" /> Materie Prime</label>
-  <label><input type="checkbox" name="gruppo" value="Contaminanti" /> Contaminanti</label>
-</fieldset>
+      <legend>Gruppo</legend>
+      <label><input type="checkbox" name="gruppo" value="Cioccolato" /> Cioccolato</label>
+      <label><input type="checkbox" name="gruppo" value="Confezionati" /> Confezionati</label>
+      <label><input type="checkbox" name="gruppo" value="Oli" /> Oli</label>
+      <label><input type="checkbox" name="gruppo" value="Allergeni" /> Allergeni</label>
+      <label><input type="checkbox" name="gruppo" value="Microbiologia" /> Microbiologia</label>
+      <label><input type="checkbox" name="gruppo" value="Materie Prime" /> Materie Prime</label>
+      <label><input type="checkbox" name="gruppo" value="Contaminanti" /> Contaminanti</label>
+    </fieldset>
 
-<label for="ruolo">Ruolo</label>
-<select name="ruolo">
-  <option value="">-- Seleziona --</option>
-  <option value="Analista">Analista</option>
-  <option value="Referente">Referente</option>
-  <option value="Viceresponsabile">Viceresponsabile</option>
-  <option value="Responsabile">Responsabile</option>
-</select>
+    <label for="ruolo">Ruolo</label>
+    <select name="ruolo">
+      <option value="">-- Seleziona --</option>
+      <option value="Analista">Analista</option>
+      <option value="Referente">Referente</option>
+      <option value="Viceresponsabile">Viceresponsabile</option>
+      <option value="Responsabile">Responsabile</option>
+    </select>
 
-<label for="tipo_turno">Tipo Turno</label>
-<select name="tipo_turno">
-  <option value="">-- Seleziona --</option>
-  <option value="Standard">Standard</option>
-  <option value="Ciclo continuo">Ciclo continuo</option>
-  <option value="Altro">Altro</option>
-</select>
+    <label for="tipo_turno">Tipo Turno</label>
+    <select name="tipo_turno">
+      <option value="">-- Seleziona --</option>
+      <option value="Standard">Standard</option>
+      <option value="Ciclo continuo">Ciclo continuo</option>
+      <option value="Altro">Altro</option>
+    </select>
 
     <input type="number" name="ore_accumulate" placeholder="Ore accumulate" step="0.1" />
     <input type="number" name="monte_ore_annuali" placeholder="Monte ore annuali" />
@@ -103,8 +104,8 @@
         form.telefono_fisso.value = utente.telefono_fisso || '';
         form.cellulare.value = utente.cellulare || '';
         document.querySelectorAll('input[name="gruppo"]').forEach(cb => {
-          cb.checked = d.gruppo?.includes(cb.value);
-          });
+          cb.checked = Array.isArray(utente.gruppo) ? utente.gruppo.includes(cb.value) : utente.gruppo?.includes(cb.value);
+        });
         form.ruolo.value = utente.ruolo || '';
         form.tipo_turno.value = utente.tipo_turno || '';
         form.ore_accumulate.value = utente.ore_accumulate || '';
@@ -115,19 +116,21 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       msg.textContent = '';
-     const formData = new FormData(form);
+      const formData = new FormData(form);
       const data = Object.fromEntries(formData.entries());
       data.gruppo = [...form.querySelectorAll('input[name="gruppo"]:checked')].map(cb => cb.value);
-      
-      const id = select.value;
 
+      const id = select.value;
       const method = id ? 'PUT' : 'POST';
       const url = id ? `${API_URL}?id=${id}` : API_URL;
 
       try {
         const res = await fetch(url, {
           method,
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...headers
+          },
           body: JSON.stringify(data),
         });
         const result = await res.json();
@@ -148,7 +151,10 @@
       if (!confirm("Sei sicuro di voler eliminare questo dipendente?")) return;
 
       try {
-        const res = await fetch(`${API_URL}?id=${id}`, { method: 'DELETE' });
+        const res = await fetch(`${API_URL}?id=${id}`, {
+          method: 'DELETE',
+          headers: headers
+        });
         const result = await res.json();
         msg.textContent = result.message || result.error;
         msg.className = res.ok ? 'success' : 'error';
