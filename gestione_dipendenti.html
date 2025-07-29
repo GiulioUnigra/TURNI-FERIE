@@ -26,9 +26,34 @@
     <input type="password" name="password" placeholder="Password" required />
     <input type="text" name="telefono_fisso" placeholder="Telefono Fisso" />
     <input type="text" name="cellulare" placeholder="Cellulare" />
-    <input type="text" name="gruppo" placeholder="Gruppo" />
-    <input type="text" name="ruolo" placeholder="Ruolo" />
-    <input type="text" name="tipo_turno" placeholder="Tipo Turno" />
+    <fieldset>
+  <legend>Gruppo</legend>
+  <label><input type="checkbox" name="gruppo" value="Cioccolato" /> Cioccolato</label>
+  <label><input type="checkbox" name="gruppo" value="Confezionati" /> Confezionati</label>
+  <label><input type="checkbox" name="gruppo" value="Oli" /> Oli</label>
+  <label><input type="checkbox" name="gruppo" value="Allergeni" /> Allergeni</label>
+  <label><input type="checkbox" name="gruppo" value="Microbiologia" /> Microbiologia</label>
+  <label><input type="checkbox" name="gruppo" value="Materie Prime" /> Materie Prime</label>
+  <label><input type="checkbox" name="gruppo" value="Contaminanti" /> Contaminanti</label>
+</fieldset>
+
+<label for="ruolo">Ruolo</label>
+<select name="ruolo">
+  <option value="">-- Seleziona --</option>
+  <option value="Analista">Analista</option>
+  <option value="Referente">Referente</option>
+  <option value="Viceresponsabile">Viceresponsabile</option>
+  <option value="Responsabile">Responsabile</option>
+</select>
+
+<label for="tipo_turno">Tipo Turno</label>
+<select name="tipo_turno">
+  <option value="">-- Seleziona --</option>
+  <option value="Standard">Standard</option>
+  <option value="Ciclo continuo">Ciclo continuo</option>
+  <option value="Sabato cioccolato">Sabato cioccolato</option>
+</select>
+
     <input type="number" name="ore_accumulate" placeholder="Ore accumulate" step="0.1" />
     <input type="number" name="monte_ore_annuali" placeholder="Monte ore annuali" />
 
