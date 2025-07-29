@@ -102,7 +102,9 @@
         form.password.value = '';
         form.telefono_fisso.value = utente.telefono_fisso || '';
         form.cellulare.value = utente.cellulare || '';
-        form.gruppo.value = utente.gruppo || '';
+        document.querySelectorAll('input[name="gruppo"]').forEach(cb => {
+          cb.checked = d.gruppo?.includes(cb.value);
+          });
         form.ruolo.value = utente.ruolo || '';
         form.tipo_turno.value = utente.tipo_turno || '';
         form.ore_accumulate.value = utente.ore_accumulate || '';
@@ -113,7 +115,10 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       msg.textContent = '';
-      const data = Object.fromEntries(new FormData(form).entries());
+     const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+      data.gruppo = [...form.querySelectorAll('input[name="gruppo"]:checked')].map(cb => cb.value);
+      
       const id = select.value;
 
       const method = id ? 'PUT' : 'POST';
