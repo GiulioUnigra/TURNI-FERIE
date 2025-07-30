@@ -157,6 +157,7 @@
          headers: {
            'Content-Type': 'application/json'
           },
+        });
         const result = await res.json();
         msg.textContent = result.message || result.error;
         msg.className = res.ok ? 'success' : 'error';
