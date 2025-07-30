@@ -13,7 +13,6 @@
   </style>
 </head>
 <body>
-  <a href="home.html" class="back-home">⬅ Torna alla Home</a>
   <h1>👨‍💼 Gestione Dipendenti</h1>
 
   <label for="dipSelect">Seleziona Dipendente</label>
@@ -69,7 +68,7 @@
     const API_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/functions/v1/crea-utente';
     const REST_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/rest/v1/dipendenti';
     const headers = {
-      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE',
+      'Content-Type': 'application/json',
       'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
     };
 
@@ -128,15 +127,13 @@
       try {
         const res = await fetch(url, {
           method,
-          headers: {
-           'Content-Type': 'application/json'
-          },
-
+          headers,
           body: JSON.stringify(data),
         });
         const result = await res.json();
         msg.textContent = result.message || result.error;
         msg.className = res.ok ? 'success' : 'error';
+        if (res.ok) location.reload();
       } catch (err) {
         msg.textContent = 'Errore di rete';
         msg.className = 'error';
@@ -154,9 +151,7 @@
       try {
         const res = await fetch(`${API_URL}?id=${id}`, {
           method: 'DELETE',
-         headers: {
-           'Content-Type': 'application/json'
-          },
+          headers
         });
         const result = await res.json();
         msg.textContent = result.message || result.error;
