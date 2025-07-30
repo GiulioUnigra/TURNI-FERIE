@@ -68,7 +68,6 @@
     const REST_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/rest/v1/dipendenti';
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
     };
 
     const form = document.getElementById('dipForm');
@@ -78,7 +77,11 @@
     let utenti = [];
 
     async function caricaDipendenti() {
-      const res = await fetch(REST_URL, { headers });
+      const res = await fetch(REST_URL + '?select=*', {
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
+        }
+      });
       utenti = await res.json();
       utenti.forEach(d => {
         const opt = document.createElement('option');
