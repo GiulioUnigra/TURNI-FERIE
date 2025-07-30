@@ -66,7 +66,7 @@
   <p id="msg"></p>
 
   <script>
-    const supabaseClient = window.supabase.createClient(
+    const supabase = window.supabase.createClient(
       'https://lmcawwcrwqtmylhcbqwi.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
     );
@@ -83,13 +83,13 @@
     let mieiGruppi = [];
 
     async function init() {
-      const { data: { user } } = await supabaseClient.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         msg.textContent = 'Non sei autenticato.';
         return;
       }
 
-      const { data: profilo, error } = await supabaseClient.from('dipendenti').select('*').eq('id', user.id).single();
+      const { data: profilo, error } = await supabase.from('dipendenti').select('*').eq('id', user.id).single();
       if (error || !profilo) {
         msg.textContent = 'Errore nel recupero del profilo.';
         return;
@@ -112,7 +112,7 @@
     }
 
     async function caricaDipendenti() {
-      const { data, error } = await supabaseClient.from('dipendenti').select('*');
+      const { data, error } = await supabase.from('dipendenti').select('*');
       if (error) return console.error(error);
       utenti = data.filter(d => {
         if (mioRuolo === 'Referente') {
@@ -163,8 +163,8 @@
       const method = id ? 'PUT' : 'POST';
       const url = id ? `${API_URL}?id=${id}` : API_URL;
 
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
+      const sessionData = await supabase.auth.getSession();
+      const accessToken = sessionData?.data?.session?.access_token;
 
       try {
         const res = await fetch(url, {
@@ -190,8 +190,8 @@
       if (!id) return alert("Seleziona un dipendente da eliminare.");
       if (!confirm("Sei sicuro di voler eliminare questo dipendente?")) return;
 
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
+      const sessionData = await supabase.auth.getSession();
+      const accessToken = sessionData?.data?.session?.access_token;
 
       try {
         const res = await fetch(`${API_URL}?id=${id}`, {
