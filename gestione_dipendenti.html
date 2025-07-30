@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gestione Dipendenti</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     body { font-family: sans-serif; background: #f7fcf7; margin: 2rem; }
     input, select, button { display: block; margin-bottom: 1rem; padding: 0.5rem; width: 100%; }
@@ -64,12 +65,13 @@
   <p id="msg"></p>
 
   <script>
+    const supabase = supabase.createClient(
+      'https://lmcawwcrwqtmylhcbqwi.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
+    );
+
     const API_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/functions/v1/crea-utente';
     const REST_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/rest/v1/dipendenti';
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-
     const form = document.getElementById('dipForm');
     const select = document.getElementById('dipSelect');
     const msg = document.getElementById('msg');
@@ -77,12 +79,12 @@
     let utenti = [];
 
     async function caricaDipendenti() {
-      const res = await fetch(REST_URL + '?select=*', {
-        headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
-        }
-      });
-      utenti = await res.json();
+      const {
+        data,
+        error
+      } = await supabase.from('dipendenti').select('*');
+      if (error) return console.error(error);
+      utenti = data;
       utenti.forEach(d => {
         const opt = document.createElement('option');
         opt.value = d.id;
@@ -126,10 +128,18 @@
       const method = id ? 'PUT' : 'POST';
       const url = id ? `${API_URL}?id=${id}` : API_URL;
 
+      const {
+        data: sessionData
+      } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
       try {
         const res = await fetch(url, {
           method,
-          headers,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
           body: JSON.stringify(data),
         });
         const result = await res.json();
@@ -150,10 +160,18 @@
       }
       if (!confirm("Sei sicuro di voler eliminare questo dipendente?")) return;
 
+      const {
+        data: sessionData
+      } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
       try {
         const res = await fetch(`${API_URL}?id=${id}`, {
           method: 'DELETE',
-          headers
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          }
         });
         const result = await res.json();
         msg.textContent = result.message || result.error;
