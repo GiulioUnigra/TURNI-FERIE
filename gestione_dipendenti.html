@@ -10,6 +10,7 @@
     input, select, button { display: block; margin-bottom: 1rem; padding: 0.5rem; width: 100%; }
     .success { color: green; }
     .error { color: red; }
+    #dipForm, #dipSelect, button { display: none; } /* nascondi all'avvio */
   </style>
 </head>
 <body>
@@ -59,7 +60,7 @@
     <input type="number" name="monte_ore_annuali" placeholder="Monte ore annuali" />
 
     <button type="submit">Salva Dipendente</button>
-    <button type="button" onclick="eliminaDipendente()">Elimina Dipendente</button>
+    <button type="button" id="deleteBtn" onclick="eliminaDipendente()">Elimina Dipendente</button>
   </form>
 
   <p id="msg"></p>
@@ -71,20 +72,53 @@
     );
 
     const API_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/functions/v1/crea-utente';
-    const REST_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/rest/v1/dipendenti';
     const form = document.getElementById('dipForm');
     const select = document.getElementById('dipSelect');
     const msg = document.getElementById('msg');
+    const deleteBtn = document.getElementById('deleteBtn');
 
     let utenti = [];
+    let mioRuolo = '';
+    let mieiGruppi = [];
+
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        msg.textContent = 'Non sei autenticato.';
+        return;
+      }
+
+      const { data: profilo, error } = await supabase.from('dipendenti').select('*').eq('id', user.id).single();
+      if (error || !profilo) {
+        msg.textContent = 'Errore nel recupero del profilo.';
+        return;
+      }
+
+      mioRuolo = profilo.ruolo;
+      mieiGruppi = profilo.gruppo || [];
+
+      if (mioRuolo === 'Analista') {
+        msg.textContent = 'Accesso non autorizzato.';
+        return;
+      }
+
+      // mostra elementi
+      form.style.display = 'block';
+      select.style.display = 'block';
+      deleteBtn.style.display = mioRuolo === 'Referente' ? 'none' : 'block';
+
+      caricaDipendenti();
+    }
 
     async function caricaDipendenti() {
-      const {
-        data,
-        error
-      } = await supabase.from('dipendenti').select('*');
+      const { data, error } = await supabase.from('dipendenti').select('*');
       if (error) return console.error(error);
-      utenti = data;
+      utenti = data.filter(d => {
+        if (mioRuolo === 'Referente') {
+          return d.gruppo?.some(g => mieiGruppi.includes(g));
+        }
+        return true;
+      });
       utenti.forEach(d => {
         const opt = document.createElement('option');
         opt.value = d.id;
@@ -128,9 +162,7 @@
       const method = id ? 'PUT' : 'POST';
       const url = id ? `${API_URL}?id=${id}` : API_URL;
 
-      const {
-        data: sessionData
-      } = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
 
       try {
@@ -154,15 +186,10 @@
 
     async function eliminaDipendente() {
       const id = select.value;
-      if (!id) {
-        alert("Seleziona un dipendente da eliminare.");
-        return;
-      }
+      if (!id) return alert("Seleziona un dipendente da eliminare.");
       if (!confirm("Sei sicuro di voler eliminare questo dipendente?")) return;
 
-      const {
-        data: sessionData
-      } = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
 
       try {
@@ -183,7 +210,7 @@
       }
     }
 
-    caricaDipendenti();
+    init();
   </script>
 </body>
 </html>
