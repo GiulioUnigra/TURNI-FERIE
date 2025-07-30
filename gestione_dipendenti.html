@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
@@ -60,35 +61,35 @@
     <input type="number" name="monte_ore_annuali" placeholder="Monte ore annuali" />
 
     <button type="submit">Salva Dipendente</button>
-    <button type="button" id="deleteBtn" onclick="eliminaDipendente()">Elimina Dipendente</button>
+    <button type="button" id="deleteBtn">Elimina Dipendente</button>
   </form>
 
   <p id="msg"></p>
 
   <script>
-    const supabaseClient = supabase.createClient(
+    const supabase = window.supabase.createClient(
       'https://lmcawwcrwqtmylhcbqwi.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2F3d2Nyd3F0bXlsaGNicXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDE1MDgsImV4cCI6MjA2ODY3NzUwOH0.mR9jK7S9Bkdf75XqLcMKj7nvRFqmMWLj9Km2QZ6uluE'
     );
 
-    const API_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/functions/v1/crea-utente';
     const form = document.getElementById('dipForm');
     const select = document.getElementById('dipSelect');
     const msg = document.getElementById('msg');
     const deleteBtn = document.getElementById('deleteBtn');
+    const API_URL = 'https://lmcawwcrwqtmylhcbqwi.supabase.co/functions/v1/crea-utente';
 
     let utenti = [];
     let mioRuolo = '';
     let mieiGruppi = [];
 
     async function init() {
-      const { data: { user } } = await supabaseClient.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         msg.textContent = 'Non sei autenticato.';
         return;
       }
 
-      const { data: profilo, error } = await supabaseClient.from('dipendenti').select('*').eq('id', user.id).single();
+      const { data: profilo, error } = await supabase.from('dipendenti').select('*').eq('id', user.id).single();
       if (error || !profilo) {
         msg.textContent = 'Errore nel recupero del profilo.';
         return;
@@ -110,7 +111,7 @@
     }
 
     async function caricaDipendenti() {
-      const { data, error } = await supabaseClient.from('dipendenti').select('*');
+      const { data, error } = await supabase.from('dipendenti').select('*');
       if (error) return console.error(error);
       utenti = data.filter(d => {
         if (mioRuolo === 'Referente') {
@@ -161,7 +162,7 @@
       const method = id ? 'PUT' : 'POST';
       const url = id ? `${API_URL}?id=${id}` : API_URL;
 
-      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
 
       try {
@@ -183,12 +184,12 @@
       }
     });
 
-    async function eliminaDipendente() {
+    deleteBtn.addEventListener('click', async () => {
       const id = select.value;
       if (!id) return alert("Seleziona un dipendente da eliminare.");
       if (!confirm("Sei sicuro di voler eliminare questo dipendente?")) return;
 
-      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
 
       try {
@@ -207,7 +208,7 @@
         msg.textContent = err.message;
         msg.className = 'error';
       }
-    }
+    });
 
     init();
   </script>
